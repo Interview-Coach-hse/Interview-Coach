@@ -1,0 +1,69 @@
+nameOverride: ""
+fullnameOverride: ""
+
+app:
+  replicaCount: 1
+  image:
+    repository: interview-coach
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8080
+  resources: {}
+  env:
+    serverPort: 8080
+    jwtIssuer: interview-coach
+    jwtAccessTokenMinutes: 15
+    jwtRefreshTokenDays: 7
+    emailVerificationExpirationMinutes: 15
+    emailVerificationMaxAttempts: 5
+    mailEnabled: false
+    mailFrom: no-reply@example.com
+    mailVerificationSubject: Interview Coach email verification
+    mailResetSubject: Interview Coach password reset
+    frontendPasswordResetUrl: https://example.com/reset-password
+    springMailHost: smtp.gmail.com
+    springMailPort: 587
+    springMailUsername: ""
+    springMailSmtpAuth: true
+    springMailSmtpStarttls: true
+  secrets:
+    jwtSecret: change-me-change-me-change-me-change-me-change-me-123456
+    springMailPassword: ""
+  probes:
+    readiness:
+      path: /health
+      initialDelaySeconds: 20
+      periodSeconds: 10
+    liveness:
+      path: /health
+      initialDelaySeconds: 30
+      periodSeconds: 15
+  ingress:
+    enabled: false
+    className: nginx
+    annotations: {}
+    hosts:
+      - host: interview-coach.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+
+postgres:
+  enabled: true
+  image:
+    repository: postgres
+    tag: "16-alpine"
+    pullPolicy: IfNotPresent
+  service:
+    port: 5432
+  database: interview_coach
+  username: interview_coach
+  password: interview_coach
+  resources: {}
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: ""

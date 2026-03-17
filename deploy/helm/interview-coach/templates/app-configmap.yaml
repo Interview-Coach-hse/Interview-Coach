@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "interview-coach.appConfigName" . }}
+  labels:
+    {{- include "interview-coach.labels" . | nindent 4 }}
+data:
+  SERVER_PORT: {{ .Values.app.env.serverPort | quote }}
+  APP_SECURITY_JWT_ISSUER: {{ .Values.app.env.jwtIssuer | quote }}
+  APP_SECURITY_JWT_ACCESS_TOKEN_MINUTES: {{ .Values.app.env.jwtAccessTokenMinutes | quote }}
+  APP_SECURITY_JWT_REFRESH_TOKEN_DAYS: {{ .Values.app.env.jwtRefreshTokenDays | quote }}
+  APP_SECURITY_EMAIL_VERIFICATION_EXPIRATION_MINUTES: {{ .Values.app.env.emailVerificationExpirationMinutes | quote }}
+  APP_SECURITY_EMAIL_VERIFICATION_MAX_ATTEMPTS: {{ .Values.app.env.emailVerificationMaxAttempts | quote }}
+  APP_MAIL_ENABLED: {{ .Values.app.env.mailEnabled | quote }}
+  APP_MAIL_FROM: {{ .Values.app.env.mailFrom | quote }}
+  APP_MAIL_EMAIL_VERIFICATION_SUBJECT: {{ .Values.app.env.mailVerificationSubject | quote }}
+  APP_MAIL_PASSWORD_RESET_SUBJECT: {{ .Values.app.env.mailResetSubject | quote }}
+  APP_FRONTEND_PASSWORD_RESET_URL: {{ .Values.app.env.frontendPasswordResetUrl | quote }}
+  SPRING_MAIL_HOST: {{ .Values.app.env.springMailHost | quote }}
+  SPRING_MAIL_PORT: {{ .Values.app.env.springMailPort | quote }}
+  SPRING_MAIL_USERNAME: {{ .Values.app.env.springMailUsername | quote }}
+  SPRING_MAIL_SMTP_AUTH: {{ .Values.app.env.springMailSmtpAuth | quote }}
+  SPRING_MAIL_SMTP_STARTTLS: {{ .Values.app.env.springMailSmtpStarttls | quote }}
+  SPRING_DATASOURCE_URL: {{ printf "jdbc:postgresql://%s:%v/%s" (include "interview-coach.postgresHost" .) .Values.postgres.service.port .Values.postgres.database | quote }}
+  SPRING_DATASOURCE_USERNAME: {{ .Values.postgres.username | quote }}

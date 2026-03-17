@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/001-init-schema.sql
+  - include:
+      file: db/changelog/002-email-verification-codes.sql
+  - include:
+      file: db/changelog/003-demo-data.sql

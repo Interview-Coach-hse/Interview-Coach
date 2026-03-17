@@ -1,0 +1,12 @@
+1. Install the chart:
+   helm upgrade --install {{ .Release.Name }} {{ .Chart.Name }} \
+     --namespace <namespace> --create-namespace
+
+2. Check resources:
+   kubectl get pods,svc,ingress -n <namespace>
+
+3. If ingress is disabled, port-forward the app:
+   kubectl port-forward svc/{{ include "interview-coach.fullname" . }} 8080:{{ .Values.app.service.port }} -n <namespace>
+
+4. Swagger will be available at:
+   http://localhost:8080/swagger-ui.html

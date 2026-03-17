@@ -1,0 +1,12 @@
+.git
+.gitignore
+.gradle
+build
+tmp
+node_modules
+*.iml
+.idea
+.vscode
+README.md
+*.pdf
+*.docx
