@@ -29,6 +29,8 @@ import interview.coach.repository.ReportItemRepository;
 import interview.coach.repository.SessionMessageRepository;
 import interview.coach.repository.SessionReportRepository;
 import interview.coach.security.AppUserPrincipal;
+
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -99,6 +101,7 @@ public class InterviewSessionService {
         return toResponse(session);
     }
 
+    @Transactional(readOnly = true)
     public SessionResponse getSession(AppUserPrincipal principal, UUID sessionId) {
         return toResponse(requireOwnedSession(principal, sessionId));
     }
@@ -207,6 +210,9 @@ public class InterviewSessionService {
             report.setRequestedAt(now);
             report.setCreatedAt(now);
             report.setUpdatedAt(now);
+            // TODO: Убрать и заменить на вызов AI
+            report.setSummaryText("Ты хорошо постарался! Молодец!\nВ тестовом режиме не доступен полный отчёт.");
+            report.setOverallScore(new BigDecimal(1));
             return sessionReportRepository.save(report);
         });
 
@@ -221,6 +227,9 @@ public class InterviewSessionService {
                 .orElseGet(() -> {
                     SessionReport pending = new SessionReport();
                     pending.setStatus(ReportStatus.PENDING);
+                    // TODO: Убрать
+                    pending.setSummaryText("Ты хорошо постарался! Молодец!\nВ тестовом режиме не доступен полный отчёт.");
+                    pending.setOverallScore(new BigDecimal(1));
                     return pending;
                 });
         List<ReportItemResponse> items = report.getId() == null ? List.of() : reportItemRepository.findByReport_IdOrderBySortOrderAsc(report.getId()).stream()
@@ -229,6 +238,7 @@ public class InterviewSessionService {
         return new ReportResponse(report.getStatus(), report.getSummaryText(), report.getOverallScore(), items);
     }
 
+    @Transactional(readOnly = true)
     public PageResponse<SessionResponse> getHistory(
             AppUserPrincipal principal,
             SessionState state,
@@ -240,11 +250,21 @@ public class InterviewSessionService {
     ) {
         User user = userService.getCurrentUser(principal);
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Specification<InterviewSession> specification = Specification.where(hasUser(user.getId()))
-                .and(hasState(state))
-                .and(hasProfile(profileId))
-                .and(createdFrom(createdFrom))
-                .and(createdTo(createdTo));
+        Specification<InterviewSession> specification = Specification.where(hasUser(user.getId()));
+
+        if (state != null) {
+            specification = specification.and(hasState(state));
+        }
+        if (profileId != null) {
+            specification = specification.and(hasProfile(profileId));
+        }
+        if (createdFrom != null) {
+            specification = specification.and(createdFrom(createdFrom));
+        }
+        if (createdTo != null) {
+            specification = specification.and(createdTo(createdTo));
+        }
+
         return PageResponse.from(interviewSessionRepository.findAll(specification, pageable).map(this::toResponse));
     }
 
