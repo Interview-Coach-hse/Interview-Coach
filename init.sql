@@ -240,7 +240,7 @@ CREATE TABLE interview_sessions (
                 'IN_PROGRESS',
                 'FINISHED',
                 'PROCESSING',
-                'REPORT_READY',
+                'FINISHED',
                 'FAILED',
                 'CANCELED'
             )

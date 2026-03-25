@@ -5,3 +5,5 @@ databaseChangeLog:
       file: db/changelog/002-email-verification-codes.sql
   - include:
       file: db/changelog/003-demo-data.sql
+  - include:
+      file: db/changelog/004-replace-report-ready-with-finished.sql

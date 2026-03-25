@@ -22,6 +22,7 @@ import interview.coach.domain.entity.SessionReport;
 import interview.coach.domain.entity.User;
 import interview.coach.domain.DomainEnums.ExternalRequestStatus;
 import interview.coach.domain.DomainEnums.ExternalRequestType;
+import interview.coach.exception.AssessmentIntegrationException;
 import interview.coach.exception.ApiException;
 import interview.coach.repository.ExternalRequestRepository;
 import interview.coach.repository.InterviewSessionRepository;
@@ -160,7 +161,7 @@ public class InterviewSessionService {
     @Transactional
     public SessionStateResponse cancelSession(AppUserPrincipal principal, UUID sessionId) {
         InterviewSession session = requireOwnedSession(principal, sessionId);
-        if (session.getState() == SessionState.FINISHED || session.getState() == SessionState.CANCELED || session.getState() == SessionState.REPORT_READY) {
+        if (session.getState() == SessionState.FINISHED || session.getState() == SessionState.CANCELED) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Session cannot be canceled from current state");
         }
         LocalDateTime now = LocalDateTime.now();
@@ -173,7 +174,7 @@ public class InterviewSessionService {
     @Transactional
     public SendMessageResponse sendMessage(AppUserPrincipal principal, UUID sessionId, SendMessageRequest request) {
         InterviewSession session = requireOwnedSession(principal, sessionId);
-        if (session.getState() == SessionState.FINISHED || session.getState() == SessionState.CANCELED || session.getState() == SessionState.PROCESSING || session.getState() == SessionState.REPORT_READY || session.getState() == SessionState.PAUSED || session.getState() == SessionState.FAILED) {
+        if (session.getState() == SessionState.FINISHED || session.getState() == SessionState.CANCELED || session.getState() == SessionState.PROCESSING || session.getState() == SessionState.PAUSED || session.getState() == SessionState.FAILED) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Cannot send message for the current session state");
         }
 
@@ -292,27 +293,58 @@ public class InterviewSessionService {
 
     private SessionMessage requestAndSaveNextPrompt(InterviewSession session) {
         int nextQuestionIndex = session.getCurrentQuestionIndex() == null ? 0 : session.getCurrentQuestionIndex();
-        var prompt = assessmentAiService.getNextPrompt(session, nextQuestionIndex);
+        try {
+            var prompt = assessmentAiService.getNextPrompt(session, nextQuestionIndex);
 
+            ExternalRequest externalRequest = new ExternalRequest();
+            externalRequest.setSession(session);
+            externalRequest.setRequestType(ExternalRequestType.NEXT_QUESTION);
+            externalRequest.setRequestStatus(prompt.externalRequestSucceeded() ? ExternalRequestStatus.SUCCESS : ExternalRequestStatus.FAILED);
+            externalRequest.setRequestPayload(prompt.requestPayload());
+            externalRequest.setResponsePayload(prompt.responsePayload());
+            externalRequest.setErrorMessage(prompt.errorMessage());
+            externalRequest.setAttemptCount(1);
+            externalRequest.setCreatedAt(LocalDateTime.now());
+            externalRequest.setSentAt(LocalDateTime.now());
+            externalRequest.setCompletedAt(LocalDateTime.now());
+            externalRequestRepository.save(externalRequest);
+
+            int sequenceNumber = (int) sessionMessageRepository.countBySessionId(session.getId());
+            SessionMessage promptMessage = saveMessage(session, prompt.senderType(), prompt.messageType(), prompt.content(), sequenceNumber);
+            if (prompt.advancesQuestionIndex()) {
+                session.setCurrentQuestionIndex(nextQuestionIndex + 1);
+            }
+            session.setLastErrorCode(null);
+            session.setLastErrorMessage(null);
+            return promptMessage;
+        } catch (AssessmentIntegrationException exception) {
+            registerAssessmentFailure(session, ExternalRequestType.NEXT_QUESTION, null, exception);
+            throw exception;
+        }
+    }
+
+    private void registerAssessmentFailure(
+            InterviewSession session,
+            ExternalRequestType requestType,
+            String requestPayload,
+            AssessmentIntegrationException exception
+    ) {
         ExternalRequest externalRequest = new ExternalRequest();
         externalRequest.setSession(session);
-        externalRequest.setRequestType(ExternalRequestType.NEXT_QUESTION);
-        externalRequest.setRequestStatus(prompt.externalRequestSucceeded() ? ExternalRequestStatus.SUCCESS : ExternalRequestStatus.FAILED);
-        externalRequest.setRequestPayload(prompt.requestPayload());
-        externalRequest.setResponsePayload(prompt.responsePayload());
-        externalRequest.setErrorMessage(prompt.errorMessage());
+        externalRequest.setRequestType(requestType);
+        externalRequest.setRequestStatus(ExternalRequestStatus.FAILED);
+        externalRequest.setRequestPayload(requestPayload);
+        externalRequest.setErrorMessage(exception.getMessage());
         externalRequest.setAttemptCount(1);
         externalRequest.setCreatedAt(LocalDateTime.now());
         externalRequest.setSentAt(LocalDateTime.now());
         externalRequest.setCompletedAt(LocalDateTime.now());
         externalRequestRepository.save(externalRequest);
 
-        int sequenceNumber = (int) sessionMessageRepository.countBySessionId(session.getId());
-        SessionMessage promptMessage = saveMessage(session, prompt.senderType(), prompt.messageType(), prompt.content(), sequenceNumber);
-        if (prompt.advancesQuestionIndex()) {
-            session.setCurrentQuestionIndex(nextQuestionIndex + 1);
-        }
-        return promptMessage;
+        session.setLastErrorCode(AssessmentIntegrationException.ERROR_CODE);
+        session.setLastErrorMessage(exception.getMessage());
+        session.setUpdatedAt(LocalDateTime.now());
+        interviewSessionRepository.save(session);
     }
 
     public SessionResponse toResponse(InterviewSession session) {

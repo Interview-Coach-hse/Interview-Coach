@@ -3,18 +3,18 @@ package interview.coach.support;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
-@Testcontainers
 public abstract class AbstractPostgresIntegrationTest {
 
-    @Container
     @SuppressWarnings("resource")
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
             .withDatabaseName("interview_coach_test")
             .withUsername("interview_coach")
             .withPassword("interview_coach");
+
+    static {
+        postgres.start();
+    }
 
     @DynamicPropertySource
     static void configure(DynamicPropertyRegistry registry) {
@@ -23,5 +23,7 @@ public abstract class AbstractPostgresIntegrationTest {
         registry.add("spring.datasource.password", postgres::getPassword);
         registry.add("spring.liquibase.enabled", () -> true);
         registry.add("app.security.jwt.secret", () -> "test-secret-test-secret-test-secret-test-secret-123456");
+        registry.add("app.mail.enabled", () -> false);
+        registry.add("management.health.mail.enabled", () -> false);
     }
 }

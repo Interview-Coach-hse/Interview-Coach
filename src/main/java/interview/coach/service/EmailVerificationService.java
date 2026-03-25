@@ -52,7 +52,7 @@ public class EmailVerificationService {
         User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "User not found"));
         if (user.isEmailVerified()) {
-            return new VerificationResponse("Email is already verified", normalizedEmail, null);
+            return new VerificationResponse("Email is already verified", normalizedEmail, null, null);
         }
 
         invalidateActive(normalizedEmail, VerificationPurpose.REGISTRATION);
@@ -72,7 +72,8 @@ public class EmailVerificationService {
         return new VerificationResponse(
                 "Verification code has been sent",
                 normalizedEmail,
-                mailEnabled ? null : rawCode
+                mailEnabled ? null : rawCode,
+                null
         );
     }
 

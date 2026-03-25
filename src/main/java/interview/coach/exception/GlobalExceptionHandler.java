@@ -26,7 +26,7 @@ public class GlobalExceptionHandler {
         } else {
             log.warn("API error {}: {}", exception.getStatus().value(), exception.getMessage());
         }
-        return build(exception.getStatus(), exception.getMessage());
+        return build(exception);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -71,5 +71,13 @@ public class GlobalExceptionHandler {
         body.put("error", status.getReasonPhrase());
         body.put("message", message);
         return body;
+    }
+
+    private ResponseEntity<Map<String, Object>> build(ApiException exception) {
+        Map<String, Object> body = baseBody(exception.getStatus(), exception.getMessage());
+        if (exception.getCode() != null && !exception.getCode().isBlank()) {
+            body.put("code", exception.getCode());
+        }
+        return ResponseEntity.status(exception.getStatus()).body(body);
     }
 }

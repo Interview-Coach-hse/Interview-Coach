@@ -51,7 +51,8 @@ public final class AuthDtos {
     public record VerificationResponse(
             String message,
             String email,
-            String code
+            String code,
+            AuthResponse auth
     ) {
     }
 

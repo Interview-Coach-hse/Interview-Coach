@@ -31,7 +31,7 @@ public class ProgressService {
     public ProgressResponse getProgress(AppUserPrincipal principal) {
         var user = userService.getCurrentUser(principal);
         var sessions = interviewSessionRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
-        long finishedSessions = sessions.stream().filter(session -> session.getState() == SessionState.FINISHED || session.getState() == SessionState.REPORT_READY).count();
+        long finishedSessions = sessions.stream().filter(session -> session.getState() == SessionState.FINISHED).count();
         List<BigDecimal> scores = sessions.stream()
                 .map(session -> sessionReportRepository.findBySessionId(session.getId()).orElse(null))
                 .filter(report -> report != null && report.getStatus() == ReportStatus.READY && report.getOverallScore() != null)

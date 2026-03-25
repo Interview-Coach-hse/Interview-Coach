@@ -52,6 +52,7 @@ public class AuthService {
     private final UserService userService;
     private final EmailVerificationService emailVerificationService;
     private final EmailService emailService;
+    private final boolean mailEnabled;
 
     public AuthService(
             UserRepository userRepository,
@@ -63,7 +64,8 @@ public class AuthService {
             RefreshTokenService refreshTokenService,
             UserService userService,
             EmailVerificationService emailVerificationService,
-            EmailService emailService
+            EmailService emailService,
+            @org.springframework.beans.factory.annotation.Value("${app.mail.enabled}") boolean mailEnabled
     ) {
         this.userRepository = userRepository;
         this.userPreferenceRepository = userPreferenceRepository;
@@ -75,6 +77,7 @@ public class AuthService {
         this.userService = userService;
         this.emailVerificationService = emailVerificationService;
         this.emailService = emailService;
+        this.mailEnabled = mailEnabled;
     }
 
     @Transactional
@@ -105,6 +108,20 @@ public class AuthService {
         preference.setTheme("system");
         preference.setUpdatedAt(now);
         userPreferenceRepository.save(preference);
+
+        if (!mailEnabled) {
+            user.setEmailVerified(true);
+            user.setUpdatedAt(LocalDateTime.now());
+            userRepository.save(user);
+
+            log.info("User registered with mail disabled, userId={}, email={}. Returning auth tokens immediately.", user.getId(), user.getEmail());
+            return new VerificationResponse(
+                    "User registered successfully. Email verification skipped because mail is disabled",
+                    user.getEmail(),
+                    null,
+                    buildAuthResponse(user)
+            );
+        }
 
         log.info("User registered successfully, userId={}, email={}. Verification required.", user.getId(), user.getEmail());
         return emailVerificationService.issueRegistrationCode(user.getEmail());

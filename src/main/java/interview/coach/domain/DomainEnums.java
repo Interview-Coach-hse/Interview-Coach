@@ -45,7 +45,6 @@ public final class DomainEnums {
         PAUSED,
         FINISHED,
         PROCESSING,
-        REPORT_READY,
         FAILED,
         CANCELED
     }

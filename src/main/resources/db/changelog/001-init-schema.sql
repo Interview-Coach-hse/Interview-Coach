@@ -137,7 +137,7 @@ CREATE TABLE interview_sessions (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_interview_sessions_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT fk_interview_sessions_profile FOREIGN KEY (profile_id) REFERENCES interview_profiles(id),
-    CONSTRAINT chk_interview_sessions_state CHECK (state IN ('CREATED', 'IN_PROGRESS', 'PAUSED', 'FINISHED', 'PROCESSING', 'REPORT_READY', 'FAILED', 'CANCELED')),
+    CONSTRAINT chk_interview_sessions_state CHECK (state IN ('CREATED', 'IN_PROGRESS', 'PAUSED', 'FINISHED', 'PROCESSING', 'FAILED', 'CANCELED')),
     CONSTRAINT chk_interview_sessions_current_question_index CHECK (current_question_index IS NULL OR current_question_index >= 0)
 );
 CREATE INDEX idx_interview_sessions_user_id ON interview_sessions(user_id);

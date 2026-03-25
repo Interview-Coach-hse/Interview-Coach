@@ -24,7 +24,7 @@ class OpenApiIntegrationTest extends AbstractPostgresIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().json("{\"status\":\"UP\"}"));
 
-        mockMvc.perform(get("/v3/api-docs"))
+        mockMvc.perform(get("/v3/docs"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Interview Coach API")));
     }

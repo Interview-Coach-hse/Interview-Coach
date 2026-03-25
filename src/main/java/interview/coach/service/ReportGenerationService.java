@@ -8,6 +8,7 @@ import interview.coach.domain.entity.ExternalRequest;
 import interview.coach.domain.entity.InterviewSession;
 import interview.coach.domain.entity.ReportItem;
 import interview.coach.domain.entity.SessionReport;
+import interview.coach.exception.AssessmentIntegrationException;
 import interview.coach.repository.ExternalRequestRepository;
 import interview.coach.repository.ReportItemRepository;
 import interview.coach.repository.SessionMessageRepository;
@@ -91,8 +92,28 @@ public class ReportGenerationService {
             reportItemRepository.deleteByReport_Id(savedReport.getId());
             reportItemRepository.saveAll(draft.items().stream().map(item -> toEntity(savedReport, item)).toList());
 
-            session.setState(SessionState.REPORT_READY);
+            session.setState(SessionState.FINISHED);
+            session.setLastErrorCode(null);
+            session.setLastErrorMessage(null);
             session.setUpdatedAt(LocalDateTime.now());
+        } catch (AssessmentIntegrationException exception) {
+            log.error("Assessment integration failed for session {}", session.getId(), exception);
+            externalRequest.setRequestStatus(ExternalRequestStatus.FAILED);
+            externalRequest.setErrorMessage(exception.getMessage());
+            externalRequest.setCompletedAt(LocalDateTime.now());
+            externalRequestRepository.save(externalRequest);
+
+            report.setExternalRequest(externalRequest);
+            report.setStatus(ReportStatus.FAILED);
+            report.setErrorMessage(exception.getMessage());
+            report.setUpdatedAt(LocalDateTime.now());
+            sessionReportRepository.save(report);
+
+            session.setState(SessionState.FAILED);
+            session.setLastErrorCode(AssessmentIntegrationException.ERROR_CODE);
+            session.setLastErrorMessage(exception.getMessage());
+            session.setUpdatedAt(LocalDateTime.now());
+            throw exception;
         } catch (Exception exception) {
             log.error("Failed to generate report for session {}", session.getId(), exception);
             externalRequest.setRequestStatus(ExternalRequestStatus.FAILED);

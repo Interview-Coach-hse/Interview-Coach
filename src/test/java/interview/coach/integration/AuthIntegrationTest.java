@@ -26,7 +26,7 @@ class AuthIntegrationTest extends AbstractPostgresIntegrationTest {
     private MockMvc mockMvc;
 
     @Test
-    void registerVerifyAndLoginShouldWork() throws Exception {
+    void registerShouldReturnTokensImmediatelyWhenMailIsDisabled() throws Exception {
         String registerResponse = mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -37,31 +37,24 @@ class AuthIntegrationTest extends AbstractPostgresIntegrationTest {
                                 """))
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.email").value("user1@example.com"))
-                .andExpect(jsonPath("$.code").isNotEmpty())
+                .andExpect(jsonPath("$.code").isEmpty())
+                .andExpect(jsonPath("$.auth.accessToken").isNotEmpty())
+                .andExpect(jsonPath("$.auth.refreshToken").isNotEmpty())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
 
-        String code = objectMapper.readTree(registerResponse).get("code").asText();
-
-        mockMvc.perform(post("/auth/verify-email/confirm")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "email": "user1@example.com",
-                                  "code": "%s"
-                                }
-                                """.formatted(code)))
-                .andExpect(status().isNoContent());
+        JsonNode registerJson = objectMapper.readTree(registerResponse);
+        String accessToken = registerJson.get("auth").get("accessToken").asText();
 
         String loginResponse = mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                {
-                  "email": "user1@example.com",
-                  "password": "Password123"
-                }
-                """))
+                                {
+                                  "email": "user1@example.com",
+                                  "password": "Password123"
+                                }
+                                """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").isNotEmpty())
                 .andExpect(jsonPath("$.refreshToken").isNotEmpty())
@@ -71,10 +64,15 @@ class AuthIntegrationTest extends AbstractPostgresIntegrationTest {
                 .getContentAsString();
 
         JsonNode json = objectMapper.readTree(loginResponse);
-        String accessToken = json.get("accessToken").asText();
+        String loginAccessToken = json.get("accessToken").asText();
 
         mockMvc.perform(get("/user")
                         .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("user1@example.com"));
+
+        mockMvc.perform(get("/user")
+                        .header("Authorization", "Bearer " + loginAccessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("user1@example.com"));
     }
@@ -99,6 +97,6 @@ class AuthIntegrationTest extends AbstractPostgresIntegrationTest {
                                 }
                                 """))
                 .andExpect(status().isAccepted())
-                .andExpect(jsonPath("$.resetToken").doesNotExist());
+                .andExpect(jsonPath("$.resetToken").isEmpty());
     }
 }

@@ -13,6 +13,7 @@ import interview.coach.domain.entity.InterviewSession;
 import interview.coach.domain.entity.ProfileQuestion;
 import interview.coach.domain.entity.ProfileTag;
 import interview.coach.domain.entity.SessionMessage;
+import interview.coach.exception.AssessmentIntegrationException;
 import interview.coach.integration.assessment.AssessmentDtos.Metadata;
 import interview.coach.integration.assessment.AssessmentDtos.QuestionItem;
 import interview.coach.integration.assessment.AssessmentDtos.QuestionReport;
@@ -36,9 +37,9 @@ import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
 
 @Service
 public class AssessmentAiService {
@@ -46,20 +47,20 @@ public class AssessmentAiService {
     private static final Logger log = LoggerFactory.getLogger(AssessmentAiService.class);
     private static final DateTimeFormatter OFFSET_DATE_TIME = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
-    private final RestClient assessmentRestClient;
+    private final RestTemplate assessmentRestTemplate;
     private final AssessmentClientProperties properties;
     private final ProfileQuestionRepository profileQuestionRepository;
     private final ProfileTagRepository profileTagRepository;
     private final ObjectMapper objectMapper;
 
     public AssessmentAiService(
-            RestClient assessmentRestClient,
+            RestTemplate assessmentRestTemplate,
             AssessmentClientProperties properties,
             ProfileQuestionRepository profileQuestionRepository,
             ProfileTagRepository profileTagRepository,
             ObjectMapper objectMapper
     ) {
-        this.assessmentRestClient = assessmentRestClient;
+        this.assessmentRestTemplate = assessmentRestTemplate;
         this.properties = properties;
         this.profileQuestionRepository = profileQuestionRepository;
         this.profileTagRepository = profileTagRepository;
@@ -74,83 +75,77 @@ public class AssessmentAiService {
                 "limit", Math.max(properties.questionLimit(), zeroBasedQuestionIndex + 1)
         );
 
-        if (properties.enabled()) {
-            try {
-                QuestionsResponse response = assessmentRestClient.get()
-                        .uri(uriBuilder -> uriBuilder
-                                .path("/assessment/v1/questions")
-                                .queryParam("specialization", toSpecialization(profile.getDirection()))
-                                .queryParam("grade", toGrade(profile.getLevel()))
-                                .queryParam("limit", Math.max(properties.questionLimit(), zeroBasedQuestionIndex + 1))
-                                .build())
-                        .accept(MediaType.APPLICATION_JSON)
-                        .retrieve()
-                        .body(QuestionsResponse.class);
-
-                List<QuestionItem> items = response == null || response.items() == null ? List.of() : response.items();
-                if (zeroBasedQuestionIndex < items.size()) {
-                    QuestionItem selected = items.get(zeroBasedQuestionIndex);
-                    return new NextPromptResult(
-                            SenderType.INTERVIEWER,
-                            MessageType.QUESTION,
-                            selected.questionText(),
-                            true,
-                            writeJson(requestView),
-                            writeJson(response),
-                            true,
-                            null
-                    );
-                }
-                log.warn("External assessment returned only {} question(s) for profile {}, fallback will be used",
-                        items.size(), profile.getId());
-            } catch (Exception exception) {
-                log.error("Failed to fetch next question from external assessment service for session {}", session.getId(), exception);
-                return fallbackPrompt(profile, zeroBasedQuestionIndex, requestView, exception.getMessage());
-            }
+        if (!properties.enabled()) {
+            return fallbackPrompt(profile, zeroBasedQuestionIndex, requestView, null);
         }
 
-        return fallbackPrompt(profile, zeroBasedQuestionIndex, requestView, properties.enabled()
-                ? "External service returned no question for requested index"
-                : null);
+        try {
+            QuestionsResponse response = assessmentRestTemplate.getForObject(
+                    properties.baseUrl() + "/assessment/v1/questions?specialization={specialization}&grade={grade}&limit={limit}",
+                    QuestionsResponse.class,
+                    toSpecialization(profile.getDirection()),
+                    toGrade(profile.getLevel()),
+                    Math.max(properties.questionLimit(), zeroBasedQuestionIndex + 1)
+            );
+
+            List<QuestionItem> items = response == null || response.items() == null ? List.of() : response.items();
+            if (zeroBasedQuestionIndex < items.size()) {
+                QuestionItem selected = items.get(zeroBasedQuestionIndex);
+                return new NextPromptResult(
+                        SenderType.INTERVIEWER,
+                        MessageType.QUESTION,
+                        selected.questionText(),
+                        true,
+                        writeJson(requestView),
+                        writeJson(response),
+                        true,
+                        null
+                );
+            }
+            log.warn("External assessment returned only {} question(s) for profile {}", items.size(), profile.getId());
+            throw new AssessmentIntegrationException("External assessment service returned no question for the requested index");
+        } catch (RestClientException exception) {
+            log.error("Failed to fetch next question from external assessment service for session {}", session.getId(), exception);
+            throw new AssessmentIntegrationException();
+        } catch (AssessmentIntegrationException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            log.error("Unexpected failure while fetching next question for session {}", session.getId(), exception);
+            throw new AssessmentIntegrationException();
+        }
     }
 
     public AssessmentReportResult generateReport(InterviewSession session, List<SessionMessage> messages) {
         ReportRequest request = buildReportRequest(session, messages);
         String requestPayload = writeJson(request);
 
-        if (properties.enabled()) {
-            try {
-                ReportResponse response = assessmentRestClient.post()
-                        .uri("/assessment/v1/report")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .accept(MediaType.APPLICATION_JSON)
-                        .body(request)
-                        .retrieve()
-                        .body(ReportResponse.class);
-
-                if (response == null || response.report() == null) {
-                    throw new IllegalStateException("External assessment returned empty report");
-                }
-                if (!"sync".equalsIgnoreCase(properties.mode())) {
-                    throw new IllegalStateException("Async report mode is not supported by the current backend flow");
-                }
-                return toExternalReportResult(requestPayload, response);
-            } catch (Exception exception) {
-                log.error("Failed to generate report via external assessment service for session {}", session.getId(), exception);
-                AssessmentReportResult fallback = buildLocalFallback(messages, requestPayload);
-                return new AssessmentReportResult(
-                        fallback.summary(),
-                        fallback.overallScore(),
-                        fallback.items(),
-                        requestPayload,
-                        fallback.responsePayload(),
-                        false,
-                        exception.getMessage()
-                );
-            }
+        if (!properties.enabled()) {
+            return buildLocalFallback(messages, requestPayload);
         }
 
-        return buildLocalFallback(messages, requestPayload);
+        try {
+            ReportResponse response = assessmentRestTemplate.postForObject(
+                    properties.baseUrl() + "/assessment/v1/report",
+                    request,
+                    ReportResponse.class
+            );
+
+            if (response == null || response.report() == null) {
+                throw new AssessmentIntegrationException("External assessment service returned an empty report");
+            }
+            if (!"sync".equalsIgnoreCase(properties.mode())) {
+                throw new AssessmentIntegrationException("Async report mode is not supported by the current backend flow");
+            }
+            return toExternalReportResult(requestPayload, response);
+        } catch (RestClientException exception) {
+            log.error("Failed to generate report via external assessment service for session {}", session.getId(), exception);
+            throw new AssessmentIntegrationException();
+        } catch (AssessmentIntegrationException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            log.error("Unexpected failure while generating report for session {}", session.getId(), exception);
+            throw new AssessmentIntegrationException();
+        }
     }
 
     private NextPromptResult fallbackPrompt(
@@ -174,7 +169,7 @@ public class AssessmentAiService {
                             "orderIndex", profileQuestion.getOrderIndex(),
                             "required", profileQuestion.isRequired()
                     )),
-                    !properties.enabled(),
+                    true,
                     errorMessage
             );
         }
@@ -186,7 +181,7 @@ public class AssessmentAiService {
                 false,
                 writeJson(requestView),
                 writeJson(Map.of("source", "internal-profile-questions", "message", "no-more-questions")),
-                !properties.enabled(),
+                true,
                 errorMessage
         );
     }
