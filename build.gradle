@@ -2,10 +2,13 @@ plugins {
 	id 'java'
 	id 'org.springframework.boot' version '4.0.3'
 	id 'io.spring.dependency-management' version '1.1.7'
+	id 'org.openapi.generator' version '7.14.0'
 }
 
 group = 'interview.coach'
 version = '0.0.1-SNAPSHOT'
+
+def generatedOpenApiDir = layout.buildDirectory.dir("generated/openapi").get().asFile
 
 java {
 	toolchain {
@@ -47,6 +50,49 @@ dependencies {
 	testImplementation 'org.testcontainers:junit-jupiter:1.21.0'
 	testImplementation 'org.testcontainers:postgresql:1.21.0'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+sourceSets {
+	main {
+		java {
+			srcDir "${generatedOpenApiDir}/src/main/java"
+		}
+	}
+}
+
+openApiGenerate {
+	generatorName.set("spring")
+	inputSpec.set("$rootDir/docs/openapi.yaml")
+	outputDir.set(generatedOpenApiDir.absolutePath)
+	apiPackage.set("interview.coach.generated.api")
+	modelPackage.set("interview.coach.generated.model")
+	invokerPackage.set("interview.coach.generated.invoker")
+	configOptions.set([
+		interfaceOnly   : "true",
+		useSpringBoot3  : "true",
+		useTags         : "true",
+		openApiNullable : "false",
+		performBeanValidation: "true",
+		dateLibrary     : "java8",
+		hideGenerationTimestamp: "true"
+	])
+	globalProperties.set([
+		apis            : "",
+		models          : "",
+		supportingFiles : "ApiUtil.java",
+		apiDocs         : "false",
+		modelDocs       : "false",
+		apiTests        : "false",
+		modelTests      : "false"
+	])
+}
+
+tasks.named('compileJava') {
+	dependsOn tasks.named('openApiGenerate')
+}
+
+tasks.named('clean') {
+	delete generatedOpenApiDir
 }
 
 tasks.named('test') {

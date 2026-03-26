@@ -1,17 +1,13 @@
 package interview.coach.api;
 
-import interview.coach.api.dto.ProgressDtos.ProgressResponse;
+import interview.coach.generated.api.ProgressApi;
 import interview.coach.security.AppUserPrincipal;
 import interview.coach.service.ProgressService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/progress")
-public class ProgressController {
+public class ProgressController implements ProgressApi {
 
     private final ProgressService progressService;
 
@@ -19,8 +15,9 @@ public class ProgressController {
         this.progressService = progressService;
     }
 
-    @GetMapping
-    public ResponseEntity<ProgressResponse> progress(@AuthenticationPrincipal AppUserPrincipal principal) {
-        return ResponseEntity.ok(progressService.getProgress(principal));
+    @Override
+    public ResponseEntity<interview.coach.generated.model.ProgressResponse> progressGet() {
+        AppUserPrincipal principal = GeneratedApiSupport.currentPrincipal();
+        return ResponseEntity.ok(GeneratedApiSupport.toGenerated(progressService.getProgress(principal)));
     }
 }

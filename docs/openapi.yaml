@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: Static API spec derived from the current Spring controllers and DTOs.
 servers:
-  - url: http://localhost:8080
+  - url: http://localhost:8080/api
     description: Local backend
 tags:
   - name: System
@@ -239,6 +239,10 @@ components:
           format: email
         code:
           type: string
+          nullable: true
+        auth:
+          allOf:
+            - $ref: '#/components/schemas/AuthResponse'
           nullable: true
     AuthResponse:
       type: object
@@ -613,6 +617,10 @@ paths:
     post:
       tags: [Auth]
       summary: Register user
+      description: |
+        Registers a new user.
+        When mail is enabled, returns a verification response and requires email confirmation.
+        When mail is disabled, skips email verification and returns auth tokens in `auth`.
       security: []
       requestBody:
         required: true
@@ -622,7 +630,7 @@ paths:
               $ref: '#/components/schemas/RegisterRequest'
       responses:
         '202':
-          description: Verification code issued
+          description: Registration accepted. May contain verification code or immediate auth tokens depending on mail configuration.
           content:
             application/json:
               schema:
@@ -643,6 +651,9 @@ paths:
     post:
       tags: [Auth]
       summary: Resend email verification code
+      description: |
+        Reissues a verification code for an unverified user.
+        When mail is disabled, the raw verification code may be returned in the response body.
       security: []
       requestBody:
         required: true

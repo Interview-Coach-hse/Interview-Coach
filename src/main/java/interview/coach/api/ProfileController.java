@@ -1,21 +1,13 @@
 package interview.coach.api;
 
-import interview.coach.api.dto.ProfileDtos.ProfileResponse;
-import interview.coach.api.dto.PageDtos.PageResponse;
-import interview.coach.domain.DomainEnums.InterviewDirection;
-import interview.coach.domain.DomainEnums.InterviewLevel;
+import interview.coach.generated.api.ProfilesApi;
 import interview.coach.service.InterviewProfileService;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/profiles")
-public class ProfileController {
+public class ProfileController implements ProfilesApi {
 
     private final InterviewProfileService interviewProfileService;
 
@@ -23,20 +15,29 @@ public class ProfileController {
         this.interviewProfileService = interviewProfileService;
     }
 
-    @GetMapping
-    public ResponseEntity<PageResponse<ProfileResponse>> catalog(
-            @RequestParam(required = false) InterviewDirection direction,
-            @RequestParam(required = false) InterviewLevel level,
-            @RequestParam(required = false) String query,
-            @RequestParam(required = false) String tag,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+    @Override
+    public ResponseEntity<interview.coach.generated.model.PageProfileResponse> profilesGet(
+            interview.coach.generated.model.InterviewDirection direction,
+            interview.coach.generated.model.InterviewLevel level,
+            String query,
+            String tag,
+            Integer page,
+            Integer size
     ) {
-        return ResponseEntity.ok(interviewProfileService.getCatalog(direction, level, query, tag, page, size));
+        return ResponseEntity.ok(GeneratedApiSupport.toGenerated(
+                interviewProfileService.getCatalog(
+                        direction == null ? null : interview.coach.domain.DomainEnums.InterviewDirection.valueOf(direction.name()),
+                        level == null ? null : interview.coach.domain.DomainEnums.InterviewLevel.valueOf(level.name()),
+                        query,
+                        tag,
+                        page,
+                        size
+                )
+        ));
     }
 
-    @GetMapping("/{profileId}")
-    public ResponseEntity<ProfileResponse> byId(@PathVariable UUID profileId) {
-        return ResponseEntity.ok(interviewProfileService.getPublishedProfile(profileId));
+    @Override
+    public ResponseEntity<interview.coach.generated.model.ProfileResponse> profilesProfileIdGet(UUID profileId) {
+        return ResponseEntity.ok(GeneratedApiSupport.toGenerated(interviewProfileService.getPublishedProfile(profileId)));
     }
 }
