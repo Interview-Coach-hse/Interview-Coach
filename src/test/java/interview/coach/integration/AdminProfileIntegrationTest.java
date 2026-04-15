@@ -48,6 +48,46 @@ class AdminProfileIntegrationTest extends AbstractAuthenticatedIntegrationTest {
     }
 
     @Test
+    void adminShouldListProfilesWithStatuses() throws Exception {
+        String adminToken = accessTokenForSeededUser(ADMIN_EMAIL);
+        String uniqueSuffix = UUID.randomUUID().toString().substring(0, 8);
+
+        mockMvc.perform(post("/admin/profiles")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "Admin list profile %s",
+                                  "description": "Draft profile for admin list test",
+                                  "direction": "FRONTEND",
+                                  "level": "JUNIOR",
+                                  "tags": ["admin-list"]
+                                }
+                                """.formatted(uniqueSuffix)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DRAFT"));
+
+        mockMvc.perform(get("/admin/profiles")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("page", "0")
+                        .param("size", "50")
+                        .param("query", "Admin list profile " + uniqueSuffix))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].title").value("Admin list profile " + uniqueSuffix))
+                .andExpect(jsonPath("$.items[0].status").value("DRAFT"));
+
+        mockMvc.perform(get("/admin/profiles")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("page", "0")
+                        .param("size", "50")
+                        .param("status", "PUBLISHED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(3))
+                .andExpect(jsonPath("$.items[0].status").value("PUBLISHED"));
+    }
+
+    @Test
     void nonAdminShouldNotReadDraftProfileByAdminEndpoint() throws Exception {
         String demoToken = accessTokenForSeededUser(DEMO_EMAIL);
 

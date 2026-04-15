@@ -64,21 +64,37 @@ public class InterviewProfileService {
             int page,
             int size
     ) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("title").ascending());
-        Specification<InterviewProfile> specification = hasStatus(ProfileStatus.PUBLISHED);
+        return getProfilesCatalog(ProfileStatus.PUBLISHED, direction, level, query, tag, page, size);
+    }
 
-        if (direction != null) {
-            specification = specification.and(hasDirection(direction));
-        }
-        if (level != null) {
-            specification = specification.and(hasLevel(level));
-        }
-        if (query != null && !query.isBlank()) {
-            specification = specification.and(matchesQuery(query));
-        }
-        if (tag != null && !tag.isBlank()) {
-            specification = specification.and(matchesTag(tag));
-        }
+    public PageResponse<ProfileResponse> getAdminCatalog(
+            ProfileStatus status,
+            InterviewDirection direction,
+            InterviewLevel level,
+            String query,
+            String tag,
+            int page,
+            int size
+    ) {
+        return getProfilesCatalog(status, direction, level, query, tag, page, size);
+    }
+
+    private PageResponse<ProfileResponse> getProfilesCatalog(
+            ProfileStatus status,
+            InterviewDirection direction,
+            InterviewLevel level,
+            String query,
+            String tag,
+            int page,
+            int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("title").ascending());
+        Specification<InterviewProfile> specification = null;
+        specification = andIfPresent(specification, hasStatus(status));
+        specification = andIfPresent(specification, hasDirection(direction));
+        specification = andIfPresent(specification, hasLevel(level));
+        specification = andIfPresent(specification, matchesQuery(query));
+        specification = andIfPresent(specification, matchesTag(tag));
 
         var profilePage = interviewProfileRepository.findAll(specification, pageable);
         List<InterviewProfile> profiles = profilePage.getContent();
@@ -176,6 +192,9 @@ public class InterviewProfileService {
     }
 
     private Specification<InterviewProfile> hasStatus(ProfileStatus status) {
+        if (status == null) {
+            return null;
+        }
         return (root, query, cb) -> cb.equal(root.get("status"), status);
     }
 
@@ -221,6 +240,16 @@ public class InterviewProfileService {
                     );
             return cb.exists(subquery);
         };
+    }
+
+    private Specification<InterviewProfile> andIfPresent(
+            Specification<InterviewProfile> current,
+            Specification<InterviewProfile> next
+    ) {
+        if (next == null) {
+            return current;
+        }
+        return current == null ? next : current.and(next);
     }
 
     private void syncTags(InterviewProfile profile, List<String> requestedTags) {
