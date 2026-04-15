@@ -9,6 +9,7 @@ import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,6 +26,11 @@ public class AdminProfileController {
 
     public AdminProfileController(InterviewProfileService interviewProfileService) {
         this.interviewProfileService = interviewProfileService;
+    }
+
+    @GetMapping("/{profileId}")
+    public ResponseEntity<ProfileResponse> getById(@PathVariable UUID profileId) {
+        return ResponseEntity.ok(interviewProfileService.getProfile(profileId));
     }
 
     @PostMapping

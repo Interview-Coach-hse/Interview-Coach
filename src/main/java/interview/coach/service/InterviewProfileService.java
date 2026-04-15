@@ -89,6 +89,10 @@ public class InterviewProfileService {
         return toResponse(profile);
     }
 
+    public ProfileResponse getProfile(UUID profileId) {
+        return toResponse(requireProfile(profileId));
+    }
+
     @Transactional
     public ProfileResponse create(AppUserPrincipal principal, ProfileRequest request) {
         User author = userService.getCurrentUser(principal);
