@@ -18,9 +18,11 @@ import jakarta.servlet.http.HttpServletResponse;
 public class TokenAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
+    private final AccessTokenRevocationService accessTokenRevocationService;
 
-    public TokenAuthenticationFilter(JwtService jwtService) {
+    public TokenAuthenticationFilter(JwtService jwtService, AccessTokenRevocationService accessTokenRevocationService) {
         this.jwtService = jwtService;
+        this.accessTokenRevocationService = accessTokenRevocationService;
     }
 
     @Override
@@ -31,7 +33,11 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
             String token = header.substring(7);
             try {
                 JwtService.JwtClaims claims = jwtService.parseAccessToken(token);
-                authenticate(claims);
+                if (!accessTokenRevocationService.isRevoked(token)) {
+                    authenticate(claims);
+                } else {
+                    SecurityContextHolder.clearContext();
+                }
             } catch (AuthenticationException ignored) {
                 SecurityContextHolder.clearContext();
             }

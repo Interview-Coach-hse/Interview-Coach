@@ -10,6 +10,8 @@ public record AssessmentClientProperties(
         String mode,
         int questionLimit,
         String reportLanguage,
-        String subscriptionPlan
+        String subscriptionPlan,
+        int circuitBreakerFailureThreshold,
+        long circuitBreakerOpenDurationSeconds
 ) {
 }

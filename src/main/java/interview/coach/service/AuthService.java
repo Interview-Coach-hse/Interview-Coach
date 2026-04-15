@@ -20,6 +20,7 @@ import interview.coach.repository.RoleRepository;
 import interview.coach.repository.UserPreferenceRepository;
 import interview.coach.repository.UserRepository;
 import interview.coach.security.AppUserPrincipal;
+import interview.coach.security.AccessTokenRevocationService;
 import interview.coach.security.JwtService;
 import interview.coach.security.RefreshTokenService;
 import java.nio.charset.StandardCharsets;
@@ -49,6 +50,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
+    private final AccessTokenRevocationService accessTokenRevocationService;
     private final UserService userService;
     private final EmailVerificationService emailVerificationService;
     private final EmailService emailService;
@@ -62,6 +64,7 @@ public class AuthService {
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
             RefreshTokenService refreshTokenService,
+            AccessTokenRevocationService accessTokenRevocationService,
             UserService userService,
             EmailVerificationService emailVerificationService,
             EmailService emailService,
@@ -74,6 +77,7 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.refreshTokenService = refreshTokenService;
+        this.accessTokenRevocationService = accessTokenRevocationService;
         this.userService = userService;
         this.emailVerificationService = emailVerificationService;
         this.emailService = emailService;
@@ -170,13 +174,18 @@ public class AuthService {
         );
     }
 
-    public void logout(AppUserPrincipal principal, RefreshTokenRequest request) {
+    public void logout(AppUserPrincipal principal, RefreshTokenRequest request, String authorizationHeader) {
         if (principal != null) {
             log.info("Logout for userId={}", principal.userId());
         } else {
             log.info("Logout by refresh token without authenticated principal");
         }
         refreshTokenService.revoke(request.refreshToken());
+        String accessToken = extractBearerToken(authorizationHeader);
+        if (accessToken != null) {
+            var claims = jwtService.parseAccessToken(accessToken);
+            accessTokenRevocationService.revoke(accessToken, claims.expiresAt());
+        }
     }
 
     @Transactional
@@ -239,5 +248,12 @@ public class AuthService {
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException("SHA-256 is not available", exception);
         }
+    }
+
+    private String extractBearerToken(String authorizationHeader) {
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            return null;
+        }
+        return authorizationHeader.substring(7);
     }
 }

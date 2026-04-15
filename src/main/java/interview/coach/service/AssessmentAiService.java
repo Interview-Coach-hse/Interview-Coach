@@ -52,19 +52,22 @@ public class AssessmentAiService {
     private final ProfileQuestionRepository profileQuestionRepository;
     private final ProfileTagRepository profileTagRepository;
     private final ObjectMapper objectMapper;
+    private final AssessmentCircuitBreakerService assessmentCircuitBreakerService;
 
     public AssessmentAiService(
             RestTemplate assessmentRestTemplate,
             AssessmentClientProperties properties,
             ProfileQuestionRepository profileQuestionRepository,
             ProfileTagRepository profileTagRepository,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            AssessmentCircuitBreakerService assessmentCircuitBreakerService
     ) {
         this.assessmentRestTemplate = assessmentRestTemplate;
         this.properties = properties;
         this.profileQuestionRepository = profileQuestionRepository;
         this.profileTagRepository = profileTagRepository;
         this.objectMapper = objectMapper;
+        this.assessmentCircuitBreakerService = assessmentCircuitBreakerService;
     }
 
     public NextPromptResult getNextPrompt(InterviewSession session, int zeroBasedQuestionIndex) {
@@ -80,6 +83,7 @@ public class AssessmentAiService {
         }
 
         try {
+            assessmentCircuitBreakerService.acquirePermission();
             QuestionsResponse response = assessmentRestTemplate.getForObject(
                     properties.baseUrl() + "/assessment/v1/questions?specialization={specialization}&grade={grade}&limit={limit}",
                     QuestionsResponse.class,
@@ -91,6 +95,7 @@ public class AssessmentAiService {
             List<QuestionItem> items = response == null || response.items() == null ? List.of() : response.items();
             if (zeroBasedQuestionIndex < items.size()) {
                 QuestionItem selected = items.get(zeroBasedQuestionIndex);
+                assessmentCircuitBreakerService.recordSuccess();
                 return new NextPromptResult(
                         SenderType.INTERVIEWER,
                         MessageType.QUESTION,
@@ -104,12 +109,17 @@ public class AssessmentAiService {
             }
             log.warn("External assessment returned only {} question(s) for profile {}", items.size(), profile.getId());
             throw new AssessmentIntegrationException("External assessment service returned no question for the requested index");
+        } catch (AssessmentIntegrationException exception) {
+            if (!exception.getMessage().contains("Circuit breaker is open")) {
+                assessmentCircuitBreakerService.recordFailure(exception);
+            }
+            throw exception;
         } catch (RestClientException exception) {
+            assessmentCircuitBreakerService.recordFailure(exception);
             log.error("Failed to fetch next question from external assessment service for session {}", session.getId(), exception);
             throw new AssessmentIntegrationException();
-        } catch (AssessmentIntegrationException exception) {
-            throw exception;
         } catch (Exception exception) {
+            assessmentCircuitBreakerService.recordFailure(exception);
             log.error("Unexpected failure while fetching next question for session {}", session.getId(), exception);
             throw new AssessmentIntegrationException();
         }
@@ -124,6 +134,7 @@ public class AssessmentAiService {
         }
 
         try {
+            assessmentCircuitBreakerService.acquirePermission();
             ReportResponse response = assessmentRestTemplate.postForObject(
                     properties.baseUrl() + "/assessment/v1/report",
                     request,
@@ -136,13 +147,20 @@ public class AssessmentAiService {
             if (!"sync".equalsIgnoreCase(properties.mode())) {
                 throw new AssessmentIntegrationException("Async report mode is not supported by the current backend flow");
             }
-            return toExternalReportResult(requestPayload, response);
+            AssessmentReportResult result = toExternalReportResult(requestPayload, response);
+            assessmentCircuitBreakerService.recordSuccess();
+            return result;
+        } catch (AssessmentIntegrationException exception) {
+            if (!exception.getMessage().contains("Circuit breaker is open")) {
+                assessmentCircuitBreakerService.recordFailure(exception);
+            }
+            throw exception;
         } catch (RestClientException exception) {
+            assessmentCircuitBreakerService.recordFailure(exception);
             log.error("Failed to generate report via external assessment service for session {}", session.getId(), exception);
             throw new AssessmentIntegrationException();
-        } catch (AssessmentIntegrationException exception) {
-            throw exception;
         } catch (Exception exception) {
+            assessmentCircuitBreakerService.recordFailure(exception);
             log.error("Unexpected failure while generating report for session {}", session.getId(), exception);
             throw new AssessmentIntegrationException();
         }

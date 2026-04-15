@@ -13,6 +13,7 @@ import interview.coach.api.dto.AuthDtos.VerificationResponse;
 import interview.coach.security.AppUserPrincipal;
 import interview.coach.service.AuthService;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -54,9 +55,10 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(
             @AuthenticationPrincipal AppUserPrincipal principal,
-            @Valid @RequestBody RefreshTokenRequest request
+            @Valid @RequestBody RefreshTokenRequest request,
+            HttpServletRequest httpServletRequest
     ) {
-        authService.logout(principal, request);
+        authService.logout(principal, request, httpServletRequest.getHeader(org.springframework.http.HttpHeaders.AUTHORIZATION));
         return ResponseEntity.noContent().build();
     }
 

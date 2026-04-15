@@ -11,6 +11,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.anyOf;
+import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -98,5 +100,48 @@ class AuthIntegrationTest extends AbstractPostgresIntegrationTest {
                                 """))
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.resetToken").isEmpty());
+    }
+
+    @Test
+    void logoutShouldRevokeRefreshAndCurrentAccessToken() throws Exception {
+        String loginResponse = mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "user3@example.com",
+                                  "password": "Password123"
+                                }
+                                """))
+                .andExpect(status().isAccepted())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        JsonNode auth = objectMapper.readTree(loginResponse).get("auth");
+        String accessToken = auth.get("accessToken").asText();
+        String refreshToken = auth.get("refreshToken").asText();
+
+        mockMvc.perform(post("/auth/logout")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "refreshToken": "%s"
+                                }
+                                """.formatted(refreshToken)))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "refreshToken": "%s"
+                                }
+                                """.formatted(refreshToken)))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/user")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().is(anyOf(is(401), is(403))));
     }
 }
