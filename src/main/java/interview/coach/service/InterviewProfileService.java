@@ -18,8 +18,11 @@ import interview.coach.repository.TagRepository;
 import interview.coach.security.AppUserPrincipal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.PageRequest;
@@ -77,7 +80,16 @@ public class InterviewProfileService {
             specification = specification.and(matchesTag(tag));
         }
 
-        return PageResponse.from(interviewProfileRepository.findAll(specification, pageable).map(this::toResponse));
+        var profilePage = interviewProfileRepository.findAll(specification, pageable);
+        List<InterviewProfile> profiles = profilePage.getContent();
+        Map<UUID, List<String>> tagsByProfileId = loadTagsByProfileIds(profiles);
+        Map<UUID, List<interview.coach.api.dto.ProfileDtos.ProfileQuestionResponse>> questionsByProfileId = loadQuestionsByProfileIds(profiles);
+
+        return PageResponse.from(profilePage.map(profile -> toResponse(
+                profile,
+                tagsByProfileId.getOrDefault(profile.getId(), List.of()),
+                questionsByProfileId.getOrDefault(profile.getId(), List.of())
+        )));
     }
 
     public ProfileResponse getPublishedProfile(UUID profileId) {
@@ -240,13 +252,22 @@ public class InterviewProfileService {
     }
 
     public ProfileResponse toResponse(InterviewProfile profile) {
-        List<String> tags = profileTagRepository.findByProfileId(profile.getId()).stream()
-                .map(profileTag -> profileTag.getTag().getName())
-                .collect(Collectors.toList());
-        List<interview.coach.api.dto.ProfileDtos.ProfileQuestionResponse> questions = profileQuestionRepository.findByProfileIdOrderByOrderIndexAsc(profile.getId()).stream()
-                .map(this::toQuestionResponse)
-                .toList();
+        return toResponse(
+                profile,
+                profileTagRepository.findByProfileId(profile.getId()).stream()
+                        .map(profileTag -> profileTag.getTag().getName())
+                        .collect(Collectors.toList()),
+                profileQuestionRepository.findByProfileIdOrderByOrderIndexAsc(profile.getId()).stream()
+                        .map(this::toQuestionResponse)
+                        .toList()
+        );
+    }
 
+    private ProfileResponse toResponse(
+            InterviewProfile profile,
+            List<String> tags,
+            List<interview.coach.api.dto.ProfileDtos.ProfileQuestionResponse> questions
+    ) {
         return new ProfileResponse(
                 profile.getId(),
                 profile.getTitle(),
@@ -258,6 +279,42 @@ public class InterviewProfileService {
                 questions,
                 profile.getPublishedAt()
         );
+    }
+
+    private Map<UUID, List<String>> loadTagsByProfileIds(List<InterviewProfile> profiles) {
+        if (profiles.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        List<UUID> profileIds = profiles.stream()
+                .map(InterviewProfile::getId)
+                .toList();
+
+        Map<UUID, List<String>> tagsByProfileId = new LinkedHashMap<>();
+        for (ProfileTag profileTag : profileTagRepository.findByProfileIdIn(profileIds)) {
+            tagsByProfileId
+                    .computeIfAbsent(profileTag.getProfile().getId(), ignored -> new ArrayList<>())
+                    .add(profileTag.getTag().getName());
+        }
+        return tagsByProfileId;
+    }
+
+    private Map<UUID, List<interview.coach.api.dto.ProfileDtos.ProfileQuestionResponse>> loadQuestionsByProfileIds(List<InterviewProfile> profiles) {
+        if (profiles.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        List<UUID> profileIds = profiles.stream()
+                .map(InterviewProfile::getId)
+                .toList();
+
+        Map<UUID, List<interview.coach.api.dto.ProfileDtos.ProfileQuestionResponse>> questionsByProfileId = new LinkedHashMap<>();
+        for (ProfileQuestion profileQuestion : profileQuestionRepository.findByProfileIdInOrderByProfileIdAscOrderIndexAsc(profileIds)) {
+            questionsByProfileId
+                    .computeIfAbsent(profileQuestion.getProfile().getId(), ignored -> new ArrayList<>())
+                    .add(toQuestionResponse(profileQuestion));
+        }
+        return questionsByProfileId;
     }
 
     private interview.coach.api.dto.ProfileDtos.ProfileQuestionResponse toQuestionResponse(ProfileQuestion profileQuestion) {

@@ -11,5 +11,8 @@ public interface ProfileTagRepository extends JpaRepository<ProfileTag, UUID> {
     @EntityGraph(attributePaths = "tag")
     List<ProfileTag> findByProfileId(UUID profileId);
 
+    @EntityGraph(attributePaths = "tag")
+    List<ProfileTag> findByProfileIdIn(List<UUID> profileIds);
+
     void deleteByProfileId(UUID profileId);
 }

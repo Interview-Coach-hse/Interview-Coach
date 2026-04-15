@@ -11,6 +11,9 @@ public interface ProfileQuestionRepository extends JpaRepository<ProfileQuestion
     @EntityGraph(attributePaths = "question")
     List<ProfileQuestion> findByProfileIdOrderByOrderIndexAsc(UUID profileId);
 
+    @EntityGraph(attributePaths = "question")
+    List<ProfileQuestion> findByProfileIdInOrderByProfileIdAscOrderIndexAsc(List<UUID> profileIds);
+
     boolean existsByProfileIdAndOrderIndex(UUID profileId, int orderIndex);
 
     boolean existsByProfileIdAndOrderIndexAndIdNot(UUID profileId, int orderIndex, UUID id);
