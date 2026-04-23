@@ -1,5 +1,6 @@
 package interview.coach.integration.assessment;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
@@ -26,11 +27,14 @@ public final class AssessmentDtos {
     @JsonIgnoreProperties(ignoreUnknown = true)
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public record QuestionItem(
+            @JsonAlias({"id"})
             String questionId,
             String specialization,
             String grade,
+            @JsonAlias({"topic", "topic_code"})
             String topicCode,
             String topicLabel,
+            @JsonAlias({"text", "question"})
             String questionText,
             List<String> tags,
             String version

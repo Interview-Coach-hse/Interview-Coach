@@ -108,6 +108,10 @@ public class AssessmentAiService {
             List<QuestionItem> items = response == null || response.items() == null ? List.of() : response.items();
             if (zeroBasedQuestionIndex < items.size()) {
                 QuestionItem selected = items.get(zeroBasedQuestionIndex);
+                if (selected.questionText() == null || selected.questionText().isBlank()) {
+                    log.warn("External assessment returned question item without text for profile {} at index {}", profile.getId(), zeroBasedQuestionIndex);
+                    return fallbackPrompt(profile, zeroBasedQuestionIndex, requestView, "External assessment question payload is missing question text");
+                }
                 assessmentCircuitBreakerService.recordSuccess();
                 return new NextPromptResult(
                         SenderType.INTERVIEWER,
