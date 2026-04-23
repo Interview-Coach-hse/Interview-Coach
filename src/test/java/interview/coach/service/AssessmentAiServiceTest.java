@@ -4,26 +4,30 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import interview.coach.config.AssessmentClientProperties;
 import interview.coach.domain.DomainEnums.InterviewDirection;
 import interview.coach.domain.DomainEnums.InterviewLevel;
+import interview.coach.domain.DomainEnums.QuestionStatus;
+import interview.coach.domain.DomainEnums.QuestionType;
 import interview.coach.domain.DomainEnums.ProfileStatus;
 import interview.coach.domain.entity.InterviewProfile;
 import interview.coach.domain.entity.InterviewSession;
-import interview.coach.exception.AssessmentIntegrationException;
+import interview.coach.domain.entity.ProfileQuestion;
+import interview.coach.domain.entity.Question;
 import interview.coach.repository.ProfileQuestionRepository;
 import interview.coach.repository.ProfileTagRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -40,7 +44,7 @@ class AssessmentAiServiceTest {
     private ProfileTagRepository profileTagRepository;
 
     @Test
-    void shouldOpenCircuitBreakerAfterConfiguredFailuresAndShortCircuitNextRequest() {
+    void shouldLoadNextPromptFromProfileQuestionsWithoutCallingAssessmentApi() {
         AssessmentClientProperties properties = new AssessmentClientProperties(
                 true,
                 "http://localhost:8000",
@@ -66,21 +70,29 @@ class AssessmentAiServiceTest {
                 circuitBreakerService
         );
 
-        when(assessmentRestTemplate.exchange(any(org.springframework.http.RequestEntity.class), any(Class.class)))
-                .thenThrow(new RestClientException("boom"));
-
         InterviewSession session = session();
+        ProfileQuestion profileQuestion = new ProfileQuestion();
+        Question question = new Question();
+        question.setId(UUID.randomUUID());
+        question.setText("What is Spring Boot?");
+        question.setQuestionType(QuestionType.TECHNICAL);
+        question.setDirection(InterviewDirection.BACKEND);
+        question.setDifficulty(InterviewLevel.JUNIOR);
+        question.setStatus(QuestionStatus.ACTIVE);
+        question.setCreatedAt(LocalDateTime.now());
+        question.setUpdatedAt(LocalDateTime.now());
+        profileQuestion.setQuestion(question);
+        profileQuestion.setOrderIndex(0);
+        profileQuestion.setRequired(true);
 
-        assertThatThrownBy(() -> assessmentAiService.getNextPrompt(session, 0))
-                .isInstanceOf(AssessmentIntegrationException.class);
-        assertThatThrownBy(() -> assessmentAiService.getNextPrompt(session, 0))
-                .isInstanceOf(AssessmentIntegrationException.class);
-        assertThatThrownBy(() -> assessmentAiService.getNextPrompt(session, 0))
-                .isInstanceOf(AssessmentIntegrationException.class)
-                .hasMessageContaining("Circuit breaker is open");
+        when(profileQuestionRepository.findByProfileIdOrderByOrderIndexAsc(session.getProfile().getId()))
+                .thenReturn(List.of(profileQuestion));
 
-        verify(assessmentRestTemplate, times(2))
-                .exchange(any(org.springframework.http.RequestEntity.class), any(Class.class));
+        var prompt = assessmentAiService.getNextPrompt(session, 0);
+
+        assertThat(prompt.content()).isEqualTo("What is Spring Boot?");
+        assertThat(prompt.questionExternalId()).isEqualTo(question.getId().toString());
+        verify(assessmentRestTemplate, never()).exchange(any(org.springframework.http.RequestEntity.class), any(Class.class));
     }
 
     private static InterviewSession session() {

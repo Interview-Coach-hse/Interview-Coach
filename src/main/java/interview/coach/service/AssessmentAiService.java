@@ -17,9 +17,7 @@ import interview.coach.domain.entity.SessionMessage;
 import interview.coach.exception.AssessmentIntegrationException;
 import interview.coach.integration.assessment.AssessmentDtos.Metadata;
 import interview.coach.integration.assessment.AssessmentDtos.ReportCreatedResponse;
-import interview.coach.integration.assessment.AssessmentDtos.QuestionItem;
 import interview.coach.integration.assessment.AssessmentDtos.QuestionReport;
-import interview.coach.integration.assessment.AssessmentDtos.QuestionsResponse;
 import interview.coach.integration.assessment.AssessmentDtos.Report;
 import interview.coach.integration.assessment.AssessmentDtos.ReportItemRequest;
 import interview.coach.integration.assessment.AssessmentDtos.ReportRequest;
@@ -84,65 +82,7 @@ public class AssessmentAiService {
                 "grade", toGrade(profile.getLevel()),
                 "limit", Math.max(properties.questionLimit(), zeroBasedQuestionIndex + 1)
         );
-
-        if (!properties.enabled()) {
-            return fallbackPrompt(profile, zeroBasedQuestionIndex, requestView, null);
-        }
-
-        try {
-            assessmentCircuitBreakerService.acquirePermission();
-            String questionsUrl = properties.baseUrl()
-                    + "/assessment/v1/questions?specialization="
-                    + toSpecialization(profile.getDirection())
-                    + "&grade="
-                    + toGrade(profile.getLevel())
-                    + "&limit="
-                    + Math.max(properties.questionLimit(), zeroBasedQuestionIndex + 1);
-            QuestionsResponse response = exchange(
-                    RequestEntity.get(URI.create(questionsUrl))
-                            .headers(defaultHeaders())
-                            .build(),
-                    QuestionsResponse.class
-            );
-
-            List<QuestionItem> items = response == null || response.items() == null ? List.of() : response.items();
-            if (zeroBasedQuestionIndex < items.size()) {
-                QuestionItem selected = items.get(zeroBasedQuestionIndex);
-                if (selected.questionText() == null || selected.questionText().isBlank()) {
-                    log.warn("External assessment returned question item without text for profile {} at index {}", profile.getId(), zeroBasedQuestionIndex);
-                    return fallbackPrompt(profile, zeroBasedQuestionIndex, requestView, "External assessment question payload is missing question text");
-                }
-                assessmentCircuitBreakerService.recordSuccess();
-                return new NextPromptResult(
-                        SenderType.INTERVIEWER,
-                        MessageType.QUESTION,
-                        selected.questionText(),
-                        true,
-                        selected.questionId(),
-                        selected.topicCode(),
-                        safeList(selected.tags()),
-                        writeJson(requestView),
-                        writeJson(response),
-                        true,
-                        null
-                );
-            }
-            log.warn("External assessment returned only {} question(s) for profile {}", items.size(), profile.getId());
-            throw new AssessmentIntegrationException("External assessment service returned no question for the requested index");
-        } catch (AssessmentIntegrationException exception) {
-            if (!exception.getMessage().contains("Circuit breaker is open")) {
-                assessmentCircuitBreakerService.recordFailure(exception);
-            }
-            throw exception;
-        } catch (RestClientException exception) {
-            assessmentCircuitBreakerService.recordFailure(exception);
-            log.error("Failed to fetch next question from external assessment service for session {}", session.getId(), exception);
-            throw new AssessmentIntegrationException();
-        } catch (Exception exception) {
-            assessmentCircuitBreakerService.recordFailure(exception);
-            log.error("Unexpected failure while fetching next question for session {}", session.getId(), exception);
-            throw new AssessmentIntegrationException();
-        }
+        return fallbackPrompt(profile, zeroBasedQuestionIndex, requestView, null);
     }
 
     public AssessmentReportResult generateReport(InterviewSession session, List<SessionMessage> messages) {
