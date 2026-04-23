@@ -264,6 +264,9 @@ CREATE TABLE session_messages (
     sender_type         VARCHAR(30) NOT NULL,
     message_type        VARCHAR(30) NOT NULL,
     content             TEXT NOT NULL,
+    question_external_id VARCHAR(255),
+    question_topic_code  VARCHAR(255),
+    question_tags        JSONB,
     sequence_number     INT NOT NULL,
     created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 

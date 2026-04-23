@@ -127,6 +127,8 @@ CREATE TABLE interview_sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL,
     profile_id UUID NOT NULL,
+    direction_snapshot VARCHAR(50) NOT NULL,
+    level_snapshot VARCHAR(30) NOT NULL,
     state VARCHAR(30) NOT NULL DEFAULT 'CREATED',
     current_question_index INT DEFAULT 0,
     started_at TIMESTAMP,
@@ -137,11 +139,15 @@ CREATE TABLE interview_sessions (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_interview_sessions_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT fk_interview_sessions_profile FOREIGN KEY (profile_id) REFERENCES interview_profiles(id),
+    CONSTRAINT chk_interview_sessions_direction_snapshot CHECK (direction_snapshot IN ('BACKEND', 'FRONTEND', 'DEVOPS')),
+    CONSTRAINT chk_interview_sessions_level_snapshot CHECK (level_snapshot IN ('JUNIOR', 'MIDDLE')),
     CONSTRAINT chk_interview_sessions_state CHECK (state IN ('CREATED', 'IN_PROGRESS', 'PAUSED', 'FINISHED', 'PROCESSING', 'FAILED', 'CANCELED')),
     CONSTRAINT chk_interview_sessions_current_question_index CHECK (current_question_index IS NULL OR current_question_index >= 0)
 );
 CREATE INDEX idx_interview_sessions_user_id ON interview_sessions(user_id);
 CREATE INDEX idx_interview_sessions_profile_id ON interview_sessions(profile_id);
+CREATE INDEX idx_interview_sessions_direction_snapshot ON interview_sessions(direction_snapshot);
+CREATE INDEX idx_interview_sessions_level_snapshot ON interview_sessions(level_snapshot);
 CREATE INDEX idx_interview_sessions_state ON interview_sessions(state);
 CREATE INDEX idx_interview_sessions_created_at ON interview_sessions(created_at);
 
@@ -151,6 +157,9 @@ CREATE TABLE session_messages (
     sender_type VARCHAR(30) NOT NULL,
     message_type VARCHAR(30) NOT NULL,
     content TEXT NOT NULL,
+    question_external_id VARCHAR(255),
+    question_topic_code VARCHAR(255),
+    question_tags JSONB,
     sequence_number INT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_session_messages_session FOREIGN KEY (session_id) REFERENCES interview_sessions(id) ON DELETE CASCADE,
@@ -192,6 +201,7 @@ CREATE TABLE session_reports (
     status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
     summary_text TEXT,
     overall_score NUMERIC(5,2),
+    score_source VARCHAR(30),
     raw_payload JSONB,
     requested_at TIMESTAMP,
     generated_at TIMESTAMP,
@@ -201,9 +211,11 @@ CREATE TABLE session_reports (
     CONSTRAINT fk_session_reports_session FOREIGN KEY (session_id) REFERENCES interview_sessions(id) ON DELETE CASCADE,
     CONSTRAINT fk_session_reports_external_request FOREIGN KEY (external_request_id) REFERENCES external_requests(id),
     CONSTRAINT chk_session_reports_status CHECK (status IN ('PENDING', 'READY', 'FAILED')),
+    CONSTRAINT chk_session_reports_score_source CHECK (score_source IS NULL OR score_source IN ('AI', 'FALLBACK')),
     CONSTRAINT chk_session_reports_score CHECK (overall_score IS NULL OR (overall_score >= 0 AND overall_score <= 100))
 );
 CREATE INDEX idx_session_reports_status ON session_reports(status);
+CREATE INDEX idx_session_reports_score_source ON session_reports(score_source);
 CREATE INDEX idx_session_reports_generated_at ON session_reports(generated_at);
 
 CREATE TABLE report_items (

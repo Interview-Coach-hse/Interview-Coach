@@ -1,8 +1,11 @@
 package interview.coach.api.dto;
 
+import interview.coach.domain.DomainEnums.InterviewDirection;
+import interview.coach.domain.DomainEnums.InterviewLevel;
 import interview.coach.domain.DomainEnums.MessageType;
 import interview.coach.domain.DomainEnums.ReportItemType;
 import interview.coach.domain.DomainEnums.ReportStatus;
+import interview.coach.domain.DomainEnums.ScoreSource;
 import interview.coach.domain.DomainEnums.SenderType;
 import interview.coach.domain.DomainEnums.SessionState;
 import jakarta.validation.constraints.NotBlank;
@@ -41,6 +44,8 @@ public final class SessionDtos {
             UUID id,
             UUID profileId,
             String profileTitle,
+            InterviewDirection directionSnapshot,
+            InterviewLevel levelSnapshot,
             SessionState state,
             Integer currentQuestionIndex,
             LocalDateTime startedAt,
@@ -69,6 +74,7 @@ public final class SessionDtos {
             ReportStatus status,
             String summaryText,
             BigDecimal overallScore,
+            ScoreSource scoreSource,
             List<ReportItemResponse> items
     ) {
     }

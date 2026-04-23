@@ -23,8 +23,6 @@ import org.springframework.web.client.RestTemplate;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -46,11 +44,14 @@ class AssessmentAiServiceTest {
         AssessmentClientProperties properties = new AssessmentClientProperties(
                 true,
                 "http://localhost:8000",
+                "demo-api-key",
+                "main-backend",
                 "main-backend",
                 "sync",
                 10,
                 "ru",
-                "start",
+                5,
+                10,
                 2,
                 60
         );
@@ -65,7 +66,7 @@ class AssessmentAiServiceTest {
                 circuitBreakerService
         );
 
-        when(assessmentRestTemplate.getForObject(anyString(), any(Class.class), any(), any(), anyInt()))
+        when(assessmentRestTemplate.exchange(any(org.springframework.http.RequestEntity.class), any(Class.class)))
                 .thenThrow(new RestClientException("boom"));
 
         InterviewSession session = session();
@@ -79,7 +80,7 @@ class AssessmentAiServiceTest {
                 .hasMessageContaining("Circuit breaker is open");
 
         verify(assessmentRestTemplate, times(2))
-                .getForObject(anyString(), any(Class.class), any(), any(), anyInt());
+                .exchange(any(org.springframework.http.RequestEntity.class), any(Class.class));
     }
 
     private static InterviewSession session() {

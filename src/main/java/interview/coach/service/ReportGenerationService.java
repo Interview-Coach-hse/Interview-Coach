@@ -83,6 +83,7 @@ public class ReportGenerationService {
             report.setStatus(ReportStatus.READY);
             report.setSummaryText(draft.summary());
             report.setOverallScore(draft.overallScore());
+            report.setScoreSource(draft.scoreSource());
             report.setRawPayload(externalRequest.getResponsePayload());
             report.setGeneratedAt(LocalDateTime.now());
             report.setErrorMessage(draft.externalRequestSucceeded() ? null : draft.errorMessage());

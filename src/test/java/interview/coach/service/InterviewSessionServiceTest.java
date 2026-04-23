@@ -1,5 +1,6 @@
 package interview.coach.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import interview.coach.api.dto.SessionDtos.CreateSessionRequest;
 import interview.coach.domain.DomainEnums.InterviewDirection;
 import interview.coach.domain.DomainEnums.InterviewLevel;
@@ -54,6 +55,9 @@ class InterviewSessionServiceTest {
 
     @Mock
     private UserService userService;
+
+    @Mock
+    private ObjectMapper objectMapper;
 
     @InjectMocks
     private InterviewSessionService interviewSessionService;

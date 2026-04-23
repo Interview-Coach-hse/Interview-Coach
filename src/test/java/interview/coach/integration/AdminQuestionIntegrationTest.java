@@ -24,7 +24,42 @@ class AdminQuestionIntegrationTest extends AbstractAuthenticatedIntegrationTest 
         mockMvc.perform(get("/admin/questions")
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(greaterThanOrEqualTo(9)));
+                .andExpect(jsonPath("$.items.length()").value(greaterThanOrEqualTo(9)))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.totalElements").value(greaterThanOrEqualTo(9)));
+
+        mockMvc.perform(get("/admin/questions")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("query", "postgres")
+                        .param("direction", "BACKEND")
+                        .param("difficulty", "MIDDLE")
+                        .param("questionType", "TECHNICAL")
+                        .param("status", "ACTIVE")
+                        .param("sortBy", "text")
+                        .param("sortDir", "asc")
+                        .param("page", "0")
+                        .param("size", "10")
+                        .param("excludeProfileId", "20000000-0000-0000-0000-000000000001"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].text").value("Когда индекс в PostgreSQL помогает, а когда может только замедлить запись?"))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.totalPages").value(1));
+
+        mockMvc.perform(get("/admin/questions")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("search", "spring")
+                        .param("excludeProfileId", "20000000-0000-0000-0000-000000000001"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].id").value("21000000-0000-0000-0000-000000000004"));
+
+        mockMvc.perform(get("/admin/questions")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("size", "999"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.size").value(50));
 
         mockMvc.perform(get("/admin/questions/{questionId}", EXISTING_QUESTION_ID)
                         .header("Authorization", "Bearer " + adminToken))

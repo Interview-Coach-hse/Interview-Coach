@@ -72,8 +72,35 @@ public final class AssessmentDtos {
 
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public record Metadata(
-            String source,
-            String subscriptionPlan
+            String source
+    ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    public record ReportCreatedResponse(
+            String status,
+            String jobId,
+            String requestId,
+            String sessionId,
+            String createdAt,
+            String updatedAt,
+            String errorCode,
+            String errorMessage
+    ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    public record ReportStatusResponse(
+            String status,
+            String jobId,
+            String requestId,
+            String sessionId,
+            String createdAt,
+            String updatedAt,
+            String errorCode,
+            String errorMessage
     ) {
     }
 

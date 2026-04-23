@@ -1,5 +1,7 @@
 package interview.coach.domain.entity;
 
+import interview.coach.domain.DomainEnums.InterviewDirection;
+import interview.coach.domain.DomainEnums.InterviewLevel;
 import interview.coach.domain.DomainEnums.SessionState;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -35,6 +37,14 @@ public class InterviewSession {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "profile_id", nullable = false)
     private InterviewProfile profile;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "direction_snapshot", nullable = false, length = 50)
+    private InterviewDirection directionSnapshot;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "level_snapshot", nullable = false, length = 30)
+    private InterviewLevel levelSnapshot;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)

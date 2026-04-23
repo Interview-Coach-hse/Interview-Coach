@@ -80,6 +80,11 @@ public final class DomainEnums {
         FAILED
     }
 
+    public enum ScoreSource {
+        AI,
+        FALLBACK
+    }
+
     public enum ReportItemType {
         STRENGTH,
         WEAKNESS,

@@ -6,11 +6,14 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record AssessmentClientProperties(
         boolean enabled,
         String baseUrl,
+        String apiKey,
         String clientId,
+        String metadataSource,
         String mode,
         int questionLimit,
         String reportLanguage,
-        String subscriptionPlan,
+        int reportPollAttempts,
+        long reportPollDelayMillis,
         int circuitBreakerFailureThreshold,
         long circuitBreakerOpenDurationSeconds
 ) {

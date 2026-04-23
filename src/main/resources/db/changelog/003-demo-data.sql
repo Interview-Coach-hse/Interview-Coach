@@ -138,13 +138,15 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO interview_sessions (
-    id, user_id, profile_id, state, current_question_index, started_at, finished_at, created_at, updated_at
+    id, user_id, profile_id, direction_snapshot, level_snapshot, state, current_question_index, started_at, finished_at, created_at, updated_at
 )
 VALUES
     (
         '40000000-0000-0000-0000-000000000001',
         '10000000-0000-0000-0000-000000000002',
         '20000000-0000-0000-0000-000000000002',
+        'BACKEND',
+        'MIDDLE',
         'FINISHED',
         3,
         CURRENT_TIMESTAMP - INTERVAL '2 days',
@@ -156,6 +158,8 @@ VALUES
         '40000000-0000-0000-0000-000000000002',
         '10000000-0000-0000-0000-000000000002',
         '20000000-0000-0000-0000-000000000003',
+        'DEVOPS',
+        'MIDDLE',
         'IN_PROGRESS',
         1,
         CURRENT_TIMESTAMP - INTERVAL '3 hours',
@@ -197,7 +201,7 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO session_reports (
-    id, session_id, external_request_id, status, summary_text, overall_score, raw_payload, requested_at, generated_at, created_at, updated_at
+    id, session_id, external_request_id, status, summary_text, overall_score, score_source, raw_payload, requested_at, generated_at, created_at, updated_at
 )
 VALUES
     (
@@ -207,6 +211,7 @@ VALUES
         'READY',
         'Кандидат уверенно отвечает по Spring и PostgreSQL, хорошо рассуждает о диагностике проблем и показывает системный подход.',
         84.50,
+        'AI',
         '{"summary":"Demo report","source":"seed"}'::jsonb,
         CURRENT_TIMESTAMP - INTERVAL '2 days' + INTERVAL '30 minutes',
         CURRENT_TIMESTAMP - INTERVAL '2 days' + INTERVAL '31 minutes',

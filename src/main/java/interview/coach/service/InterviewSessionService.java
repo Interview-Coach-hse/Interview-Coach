@@ -1,5 +1,7 @@
 package interview.coach.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import interview.coach.api.dto.SessionDtos.CreateSessionRequest;
 import interview.coach.api.dto.PageDtos.PageResponse;
 import interview.coach.api.dto.SessionDtos.ReportItemResponse;
@@ -9,6 +11,8 @@ import interview.coach.api.dto.SessionDtos.SendMessageResponse;
 import interview.coach.api.dto.SessionDtos.SessionMessageResponse;
 import interview.coach.api.dto.SessionDtos.SessionResponse;
 import interview.coach.api.dto.SessionDtos.SessionStateResponse;
+import interview.coach.domain.DomainEnums.InterviewDirection;
+import interview.coach.domain.DomainEnums.InterviewLevel;
 import interview.coach.domain.DomainEnums.MessageType;
 import interview.coach.domain.DomainEnums.ReportStatus;
 import interview.coach.domain.DomainEnums.SenderType;
@@ -58,6 +62,7 @@ public class InterviewSessionService {
     private final UserService userService;
     private final ReportGenerationService reportGenerationService;
     private final AssessmentAiService assessmentAiService;
+    private final ObjectMapper objectMapper;
 
     public InterviewSessionService(
             InterviewSessionRepository interviewSessionRepository,
@@ -68,7 +73,8 @@ public class InterviewSessionService {
             InterviewProfileService interviewProfileService,
             UserService userService,
             ReportGenerationService reportGenerationService,
-            AssessmentAiService assessmentAiService
+            AssessmentAiService assessmentAiService,
+            ObjectMapper objectMapper
     ) {
         this.interviewSessionRepository = interviewSessionRepository;
         this.sessionMessageRepository = sessionMessageRepository;
@@ -79,6 +85,7 @@ public class InterviewSessionService {
         this.userService = userService;
         this.reportGenerationService = reportGenerationService;
         this.assessmentAiService = assessmentAiService;
+        this.objectMapper = objectMapper;
     }
 
     @Transactional
@@ -94,6 +101,8 @@ public class InterviewSessionService {
         InterviewSession session = new InterviewSession();
         session.setUser(user);
         session.setProfile(profile);
+        session.setDirectionSnapshot(profile.getDirection());
+        session.setLevelSnapshot(profile.getLevel());
         session.setState(SessionState.CREATED);
         session.setCurrentQuestionIndex(0);
         session.setCreatedAt(now);
@@ -236,7 +245,7 @@ public class InterviewSessionService {
         List<ReportItemResponse> items = report.getId() == null ? List.of() : reportItemRepository.findByReport_IdOrderBySortOrderAsc(report.getId()).stream()
                 .map(this::toResponse)
                 .toList();
-        return new ReportResponse(report.getStatus(), report.getSummaryText(), report.getOverallScore(), items);
+        return new ReportResponse(report.getStatus(), report.getSummaryText(), report.getOverallScore(), report.getScoreSource(), items);
     }
 
     @Transactional(readOnly = true)
@@ -244,6 +253,8 @@ public class InterviewSessionService {
             AppUserPrincipal principal,
             SessionState state,
             UUID profileId,
+            InterviewDirection direction,
+            InterviewLevel level,
             LocalDateTime createdFrom,
             LocalDateTime createdTo,
             int page,
@@ -258,6 +269,12 @@ public class InterviewSessionService {
         }
         if (profileId != null) {
             specification = specification.and(hasProfile(profileId));
+        }
+        if (direction != null) {
+            specification = specification.and(hasDirectionSnapshot(direction));
+        }
+        if (level != null) {
+            specification = specification.and(hasLevelSnapshot(level));
         }
         if (createdFrom != null) {
             specification = specification.and(createdFrom(createdFrom));
@@ -311,6 +328,10 @@ public class InterviewSessionService {
 
             int sequenceNumber = (int) sessionMessageRepository.countBySessionId(session.getId());
             SessionMessage promptMessage = saveMessage(session, prompt.senderType(), prompt.messageType(), prompt.content(), sequenceNumber);
+            promptMessage.setQuestionExternalId(prompt.questionExternalId());
+            promptMessage.setQuestionTopicCode(prompt.questionTopicCode());
+            promptMessage.setQuestionTags(prompt.questionTags() == null || prompt.questionTags().isEmpty() ? null : writeJson(prompt.questionTags()));
+            promptMessage = sessionMessageRepository.save(promptMessage);
             if (prompt.advancesQuestionIndex()) {
                 session.setCurrentQuestionIndex(nextQuestionIndex + 1);
             }
@@ -347,11 +368,21 @@ public class InterviewSessionService {
         interviewSessionRepository.save(session);
     }
 
+    private String writeJson(Object payload) {
+        try {
+            return objectMapper.writeValueAsString(payload);
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("Failed to serialize session message metadata", exception);
+        }
+    }
+
     public SessionResponse toResponse(InterviewSession session) {
         return new SessionResponse(
                 session.getId(),
                 session.getProfile().getId(),
                 session.getProfile().getTitle(),
+                session.getDirectionSnapshot(),
+                session.getLevelSnapshot(),
                 session.getState(),
                 session.getCurrentQuestionIndex(),
                 session.getStartedAt(),
@@ -391,6 +422,20 @@ public class InterviewSessionService {
             return null;
         }
         return (root, query, cb) -> cb.equal(root.get("profile").get("id"), profileId);
+    }
+
+    private Specification<InterviewSession> hasDirectionSnapshot(InterviewDirection direction) {
+        if (direction == null) {
+            return null;
+        }
+        return (root, query, cb) -> cb.equal(root.get("directionSnapshot"), direction);
+    }
+
+    private Specification<InterviewSession> hasLevelSnapshot(InterviewLevel level) {
+        if (level == null) {
+            return null;
+        }
+        return (root, query, cb) -> cb.equal(root.get("levelSnapshot"), level);
     }
 
     private Specification<InterviewSession> createdFrom(LocalDateTime from) {

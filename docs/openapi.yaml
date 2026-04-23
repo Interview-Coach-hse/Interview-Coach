@@ -367,6 +367,22 @@ components:
         updatedAt:
           type: string
           format: date-time
+    QuestionPageResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionResponse'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
     CreateSessionRequest:
       type: object
       required: [profileId]
@@ -382,6 +398,10 @@ components:
           $ref: '#/components/schemas/UUID'
         profileTitle:
           type: string
+        directionSnapshot:
+          $ref: '#/components/schemas/InterviewDirection'
+        levelSnapshot:
+          $ref: '#/components/schemas/InterviewLevel'
         state:
           $ref: '#/components/schemas/SessionState'
         currentQuestionIndex:
@@ -463,10 +483,33 @@ components:
           type: number
           format: double
           nullable: true
+        scoreSource:
+          type: string
+          enum: [AI, FALLBACK]
+          nullable: true
         items:
           type: array
           items:
             $ref: '#/components/schemas/ReportItemResponse'
+    ProgressPoint:
+      type: object
+      properties:
+        sessionId:
+          $ref: '#/components/schemas/UUID'
+        createdAt:
+          type: string
+          format: date-time
+        score:
+          type: number
+          format: double
+        direction:
+          $ref: '#/components/schemas/InterviewDirection'
+        level:
+          $ref: '#/components/schemas/InterviewLevel'
+        scoreSource:
+          type: string
+          enum: [AI, FALLBACK]
+          nullable: true
     ProgressResponse:
       type: object
       properties:
@@ -483,6 +526,25 @@ components:
         reportsReady:
           type: integer
           format: int64
+        latestScore:
+          type: number
+          format: double
+          nullable: true
+        previousScore:
+          type: number
+          format: double
+          nullable: true
+        scoreDelta:
+          type: number
+          format: double
+          nullable: true
+        trend:
+          type: string
+          enum: [UP, DOWN, STABLE, NO_DATA]
+        scoreTrend:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProgressPoint'
     PageProfileResponse:
       type: object
       properties:
@@ -841,6 +903,25 @@ paths:
     get:
       tags: [Progress]
       summary: User progress dashboard metrics
+      parameters:
+        - name: createdFrom
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: createdTo
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: direction
+          in: query
+          schema:
+            $ref: '#/components/schemas/InterviewDirection'
+        - name: level
+          in: query
+          schema:
+            $ref: '#/components/schemas/InterviewLevel'
       responses:
         '200':
           description: Progress stats
@@ -1192,6 +1273,14 @@ paths:
           in: query
           schema:
             $ref: '#/components/schemas/UUID'
+        - name: direction
+          in: query
+          schema:
+            $ref: '#/components/schemas/InterviewDirection'
+        - name: level
+          in: query
+          schema:
+            $ref: '#/components/schemas/InterviewLevel'
         - name: createdFrom
           in: query
           schema:
@@ -1356,15 +1445,65 @@ paths:
     get:
       tags: [Admin Questions]
       summary: List questions
+      parameters:
+        - name: query
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: direction
+          in: query
+          schema:
+            $ref: '#/components/schemas/InterviewDirection'
+        - name: difficulty
+          in: query
+          schema:
+            $ref: '#/components/schemas/InterviewLevel'
+        - name: questionType
+          in: query
+          schema:
+            $ref: '#/components/schemas/QuestionType'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/QuestionStatus'
+        - name: excludeProfileId
+          in: query
+          schema:
+            $ref: '#/components/schemas/UUID'
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 50
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [updatedAt, createdAt, text]
+            default: updatedAt
+        - name: sortDir
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
       responses:
         '200':
           description: Questions
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/QuestionResponse'
+                $ref: '#/components/schemas/QuestionPageResponse'
     post:
       tags: [Admin Questions]
       summary: Create question

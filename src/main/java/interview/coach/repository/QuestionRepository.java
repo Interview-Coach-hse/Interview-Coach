@@ -1,16 +1,19 @@
 package interview.coach.repository;
 
 import interview.coach.domain.entity.Question;
-import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
-public interface QuestionRepository extends JpaRepository<Question, UUID> {
+public interface QuestionRepository extends JpaRepository<Question, UUID>, JpaSpecificationExecutor<Question> {
 
     @Override
     @EntityGraph(attributePaths = "createdBy")
-    List<Question> findAll();
+    Page<Question> findAll(Specification<Question> specification, Pageable pageable);
 
     @Override
     @EntityGraph(attributePaths = "createdBy")

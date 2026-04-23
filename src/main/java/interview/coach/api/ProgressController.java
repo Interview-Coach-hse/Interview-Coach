@@ -1,11 +1,16 @@
 package interview.coach.api;
 
 import interview.coach.api.dto.ProgressDtos.ProgressResponse;
+import interview.coach.domain.DomainEnums.InterviewDirection;
+import interview.coach.domain.DomainEnums.InterviewLevel;
 import interview.coach.security.AppUserPrincipal;
 import interview.coach.service.ProgressService;
+import java.time.LocalDateTime;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -20,7 +25,13 @@ public class ProgressController {
     }
 
     @GetMapping
-    public ResponseEntity<ProgressResponse> progress(@AuthenticationPrincipal AppUserPrincipal principal) {
-        return ResponseEntity.ok(progressService.getProgress(principal));
+    public ResponseEntity<ProgressResponse> progress(
+            @AuthenticationPrincipal AppUserPrincipal principal,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime createdFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime createdTo,
+            @RequestParam(required = false) InterviewDirection direction,
+            @RequestParam(required = false) InterviewLevel level
+    ) {
+        return ResponseEntity.ok(progressService.getProgress(principal, createdFrom, createdTo, direction, level));
     }
 }

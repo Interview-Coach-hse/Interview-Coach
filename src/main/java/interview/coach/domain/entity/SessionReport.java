@@ -1,6 +1,7 @@
 package interview.coach.domain.entity;
 
 import interview.coach.domain.DomainEnums.ReportStatus;
+import interview.coach.domain.DomainEnums.ScoreSource;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -49,6 +50,10 @@ public class SessionReport {
 
     @Column(name = "overall_score", precision = 5, scale = 2)
     private BigDecimal overallScore;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "score_source", length = 30)
+    private ScoreSource scoreSource;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "raw_payload", columnDefinition = "jsonb")

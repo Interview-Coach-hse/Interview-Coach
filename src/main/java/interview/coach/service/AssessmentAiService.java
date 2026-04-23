@@ -7,6 +7,7 @@ import interview.coach.domain.DomainEnums.InterviewDirection;
 import interview.coach.domain.DomainEnums.InterviewLevel;
 import interview.coach.domain.DomainEnums.MessageType;
 import interview.coach.domain.DomainEnums.ReportItemType;
+import interview.coach.domain.DomainEnums.ScoreSource;
 import interview.coach.domain.DomainEnums.SenderType;
 import interview.coach.domain.entity.InterviewProfile;
 import interview.coach.domain.entity.InterviewSession;
@@ -15,6 +16,7 @@ import interview.coach.domain.entity.ProfileTag;
 import interview.coach.domain.entity.SessionMessage;
 import interview.coach.exception.AssessmentIntegrationException;
 import interview.coach.integration.assessment.AssessmentDtos.Metadata;
+import interview.coach.integration.assessment.AssessmentDtos.ReportCreatedResponse;
 import interview.coach.integration.assessment.AssessmentDtos.QuestionItem;
 import interview.coach.integration.assessment.AssessmentDtos.QuestionReport;
 import interview.coach.integration.assessment.AssessmentDtos.QuestionsResponse;
@@ -22,11 +24,13 @@ import interview.coach.integration.assessment.AssessmentDtos.Report;
 import interview.coach.integration.assessment.AssessmentDtos.ReportItemRequest;
 import interview.coach.integration.assessment.AssessmentDtos.ReportRequest;
 import interview.coach.integration.assessment.AssessmentDtos.ReportResponse;
+import interview.coach.integration.assessment.AssessmentDtos.ReportStatusResponse;
 import interview.coach.integration.assessment.AssessmentDtos.Scenario;
 import interview.coach.repository.ProfileQuestionRepository;
 import interview.coach.repository.ProfileTagRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.net.URI;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -37,6 +41,9 @@ import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.RequestEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
@@ -84,12 +91,18 @@ public class AssessmentAiService {
 
         try {
             assessmentCircuitBreakerService.acquirePermission();
-            QuestionsResponse response = assessmentRestTemplate.getForObject(
-                    properties.baseUrl() + "/assessment/v1/questions?specialization={specialization}&grade={grade}&limit={limit}",
-                    QuestionsResponse.class,
-                    toSpecialization(profile.getDirection()),
-                    toGrade(profile.getLevel()),
-                    Math.max(properties.questionLimit(), zeroBasedQuestionIndex + 1)
+            String questionsUrl = properties.baseUrl()
+                    + "/assessment/v1/questions?specialization="
+                    + toSpecialization(profile.getDirection())
+                    + "&grade="
+                    + toGrade(profile.getLevel())
+                    + "&limit="
+                    + Math.max(properties.questionLimit(), zeroBasedQuestionIndex + 1);
+            QuestionsResponse response = exchange(
+                    RequestEntity.get(URI.create(questionsUrl))
+                            .headers(defaultHeaders())
+                            .build(),
+                    QuestionsResponse.class
             );
 
             List<QuestionItem> items = response == null || response.items() == null ? List.of() : response.items();
@@ -101,6 +114,9 @@ public class AssessmentAiService {
                         MessageType.QUESTION,
                         selected.questionText(),
                         true,
+                        selected.questionId(),
+                        selected.topicCode(),
+                        safeList(selected.tags()),
                         writeJson(requestView),
                         writeJson(response),
                         true,
@@ -135,17 +151,21 @@ public class AssessmentAiService {
 
         try {
             assessmentCircuitBreakerService.acquirePermission();
-            ReportResponse response = assessmentRestTemplate.postForObject(
-                    properties.baseUrl() + "/assessment/v1/report",
-                    request,
+            if ("async".equalsIgnoreCase(properties.mode())) {
+                AssessmentReportResult result = generateAsyncReport(request, requestPayload);
+                assessmentCircuitBreakerService.recordSuccess();
+                return result;
+            }
+            ReportResponse response = exchange(
+                    RequestEntity.post(URI.create(properties.baseUrl() + "/assessment/v1/report"))
+                            .headers(defaultHeaders())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .body(request),
                     ReportResponse.class
             );
 
             if (response == null || response.report() == null) {
                 throw new AssessmentIntegrationException("External assessment service returned an empty report");
-            }
-            if (!"sync".equalsIgnoreCase(properties.mode())) {
-                throw new AssessmentIntegrationException("Async report mode is not supported by the current backend flow");
             }
             AssessmentReportResult result = toExternalReportResult(requestPayload, response);
             assessmentCircuitBreakerService.recordSuccess();
@@ -155,6 +175,10 @@ public class AssessmentAiService {
                 assessmentCircuitBreakerService.recordFailure(exception);
             }
             throw exception;
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            assessmentCircuitBreakerService.recordFailure(exception);
+            throw new AssessmentIntegrationException("External assessment polling was interrupted");
         } catch (RestClientException exception) {
             assessmentCircuitBreakerService.recordFailure(exception);
             log.error("Failed to generate report via external assessment service for session {}", session.getId(), exception);
@@ -180,6 +204,9 @@ public class AssessmentAiService {
                     MessageType.QUESTION,
                     profileQuestion.getQuestion().getText(),
                     true,
+                    profileQuestion.getQuestion().getId().toString(),
+                    null,
+                    List.of(),
                     writeJson(requestView),
                     writeJson(Map.of(
                             "source", "internal-profile-questions",
@@ -197,6 +224,9 @@ public class AssessmentAiService {
                 MessageType.INFO,
                 "Банк вопросов для этого сценария закончился. Можно завершить сессию и запросить отчёт.",
                 false,
+                null,
+                null,
+                List.of(),
                 writeJson(requestView),
                 writeJson(Map.of("source", "internal-profile-questions", "message", "no-more-questions")),
                 true,
@@ -215,28 +245,74 @@ public class AssessmentAiService {
         List<ReportItemRequest> items = pairMessages(messages).stream()
                 .map(pair -> new ReportItemRequest(
                         "item-" + pair.index(),
-                        "session-" + session.getId() + "-q-" + pair.index(),
+                        pair.questionId(),
                         pair.questionText(),
                         pair.answerText(),
-                        pair.askedAt().atOffset(ZoneOffset.UTC).format(OFFSET_DATE_TIME),
-                        topics
+                        formatAskedAt(pair.askedAt()),
+                        pair.tags()
                 ))
                 .toList();
 
         return new ReportRequest(
-                UUID.randomUUID().toString(),
+                "req-" + session.getId(),
                 session.getId().toString(),
                 properties.clientId(),
                 properties.mode(),
                 new Scenario(
-                        profile.getId().toString(),
+                        toScenarioId(profile),
                         toSpecialization(profile.getDirection()),
                         toGrade(profile.getLevel()),
                         topics,
                         properties.reportLanguage()
                 ),
                 items,
-                new Metadata(properties.clientId(), properties.subscriptionPlan())
+                new Metadata(properties.metadataSource())
+        );
+    }
+
+    private AssessmentReportResult generateAsyncReport(ReportRequest request, String requestPayload) throws InterruptedException {
+        ReportCreatedResponse created = exchange(
+                RequestEntity.post(URI.create(properties.baseUrl() + "/assessment/v1/report"))
+                        .headers(defaultHeaders())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(request),
+                ReportCreatedResponse.class
+        );
+        if (created == null || created.jobId() == null || created.jobId().isBlank()) {
+            throw new AssessmentIntegrationException("External assessment service did not return a report job id");
+        }
+
+        ReportStatusResponse latestStatus = null;
+        for (int attempt = 0; attempt < properties.reportPollAttempts(); attempt++) {
+            latestStatus = exchange(
+                    RequestEntity.get(URI.create(properties.baseUrl() + "/assessment/v1/report/" + created.jobId() + "/status"))
+                            .headers(defaultHeaders())
+                            .build(),
+                    ReportStatusResponse.class
+            );
+            String status = normalizeStatus(latestStatus == null ? null : latestStatus.status());
+            if ("ready".equals(status)) {
+                ReportResponse response = exchange(
+                        RequestEntity.get(URI.create(properties.baseUrl() + "/assessment/v1/report/" + created.jobId()))
+                                .headers(defaultHeaders())
+                                .build(),
+                        ReportResponse.class
+                );
+                if (response == null || response.report() == null) {
+                    throw new AssessmentIntegrationException("External assessment service returned an empty async report");
+                }
+                return toExternalReportResult(requestPayload, response);
+            }
+            if ("failed".equals(status) || "error".equals(status)) {
+                throw new AssessmentIntegrationException(latestStatus == null ? null : latestStatus.errorMessage());
+            }
+            Thread.sleep(properties.reportPollDelayMillis());
+        }
+
+        throw new AssessmentIntegrationException(
+                latestStatus == null
+                        ? "External assessment report polling timed out"
+                        : "External assessment report is still not ready. Last status: " + latestStatus.status()
         );
     }
 
@@ -301,6 +377,7 @@ public class AssessmentAiService {
                 report.summary(),
                 report.overallScore() == null ? null : report.overallScore().setScale(2, RoundingMode.HALF_UP),
                 items,
+                ScoreSource.AI,
                 requestPayload,
                 writeJson(response),
                 true,
@@ -334,6 +411,7 @@ public class AssessmentAiService {
                 summary,
                 overallScore,
                 items,
+                ScoreSource.FALLBACK,
                 requestPayload,
                 writeJson(Map.of(
                         "source", "internal-fallback",
@@ -361,7 +439,14 @@ public class AssessmentAiService {
                     answer = next.getContent();
                 }
             }
-            result.add(new QuestionAnswerPair(index++, current.getContent(), answer, current.getCreatedAt()));
+            result.add(new QuestionAnswerPair(
+                    index++,
+                    resolveQuestionId(current),
+                    current.getContent(),
+                    answer,
+                    current.getCreatedAt(),
+                    resolveQuestionTags(current)
+            ));
         }
         return result;
     }
@@ -381,6 +466,10 @@ public class AssessmentAiService {
         return level.name().toLowerCase(Locale.ROOT);
     }
 
+    private String toScenarioId(InterviewProfile profile) {
+        return toSpecialization(profile.getDirection()) + "_" + toGrade(profile.getLevel()) + "_session";
+    }
+
     private String normalizeTopicCode(String source) {
         String normalized = source == null ? "general" : source.trim().toLowerCase(Locale.ROOT);
         normalized = normalized.replaceAll("[^a-z0-9]+", "_");
@@ -396,11 +485,65 @@ public class AssessmentAiService {
         }
     }
 
+    private HttpHeaders defaultHeaders() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        if (properties.apiKey() != null && !properties.apiKey().isBlank()) {
+            headers.set("X-API-Key", properties.apiKey());
+        }
+        return headers;
+    }
+
+    private <T> T exchange(RequestEntity<?> requestEntity, Class<T> responseType) {
+        return assessmentRestTemplate.exchange(requestEntity, responseType).getBody();
+    }
+
+    private String normalizeStatus(String status) {
+        return status == null ? "" : status.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String formatAskedAt(LocalDateTime askedAt) {
+        return askedAt.atZone(ZoneOffset.UTC).format(OFFSET_DATE_TIME);
+    }
+
+    private String resolveQuestionId(SessionMessage message) {
+        if (message.getQuestionExternalId() != null && !message.getQuestionExternalId().isBlank()) {
+            return message.getQuestionExternalId();
+        }
+        return message.getId() == null ? "unknown-question" : message.getId().toString();
+    }
+
+    private List<String> resolveQuestionTags(SessionMessage message) {
+        List<String> tags = readTags(message.getQuestionTags());
+        if (!tags.isEmpty()) {
+            return tags;
+        }
+        if (message.getQuestionTopicCode() != null && !message.getQuestionTopicCode().isBlank()) {
+            return List.of(message.getQuestionTopicCode());
+        }
+        return List.of();
+    }
+
+    private List<String> readTags(String rawTags) {
+        if (rawTags == null || rawTags.isBlank()) {
+            return List.of();
+        }
+        try {
+            return safeList(objectMapper.readValue(rawTags, objectMapper.getTypeFactory().constructCollectionType(List.class, String.class)));
+        } catch (Exception exception) {
+            log.warn("Failed to parse question tags payload: {}", rawTags, exception);
+            return List.of();
+        }
+    }
+
     public record NextPromptResult(
             SenderType senderType,
             MessageType messageType,
             String content,
             boolean advancesQuestionIndex,
+            String questionExternalId,
+            String questionTopicCode,
+            List<String> questionTags,
             String requestPayload,
             String responsePayload,
             boolean externalRequestSucceeded,
@@ -412,6 +555,7 @@ public class AssessmentAiService {
             String summary,
             BigDecimal overallScore,
             List<AssessmentReportItemDraft> items,
+            ScoreSource scoreSource,
             String requestPayload,
             String responsePayload,
             boolean externalRequestSucceeded,
@@ -430,9 +574,11 @@ public class AssessmentAiService {
 
     private record QuestionAnswerPair(
             int index,
+            String questionId,
             String questionText,
             String answerText,
-            LocalDateTime askedAt
+            LocalDateTime askedAt,
+            List<String> tags
     ) {
     }
 }

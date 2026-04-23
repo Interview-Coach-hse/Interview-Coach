@@ -66,6 +66,21 @@ class ProfileUserProgressIntegrationTest extends AbstractAuthenticatedIntegratio
                 .andExpect(jsonPath("$.totalSessions").value(2))
                 .andExpect(jsonPath("$.finishedSessions").value(1))
                 .andExpect(jsonPath("$.reportsReady").value(1))
-                .andExpect(jsonPath("$.averageScore").value(84.50));
+                .andExpect(jsonPath("$.averageScore").value(84.50))
+                .andExpect(jsonPath("$.latestScore").value(84.50))
+                .andExpect(jsonPath("$.trend").value("NO_DATA"))
+                .andExpect(jsonPath("$.scoreTrend.length()").value(1))
+                .andExpect(jsonPath("$.scoreTrend[0].direction").value("BACKEND"))
+                .andExpect(jsonPath("$.scoreTrend[0].level").value("MIDDLE"))
+                .andExpect(jsonPath("$.scoreTrend[0].scoreSource").value("AI"));
+
+        mockMvc.perform(get("/progress")
+                        .header("Authorization", "Bearer " + demoToken)
+                        .param("direction", "BACKEND")
+                        .param("level", "MIDDLE"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalSessions").value(1))
+                .andExpect(jsonPath("$.finishedSessions").value(1))
+                .andExpect(jsonPath("$.scoreTrend.length()").value(1));
     }
 }

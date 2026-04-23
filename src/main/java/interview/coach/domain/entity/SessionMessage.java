@@ -16,7 +16,9 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
+import org.hibernate.type.SqlTypes;
 
 @Getter
 @Setter
@@ -43,6 +45,16 @@ public class SessionMessage {
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
+
+    @Column(name = "question_external_id", length = 255)
+    private String questionExternalId;
+
+    @Column(name = "question_topic_code", length = 255)
+    private String questionTopicCode;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "question_tags", columnDefinition = "jsonb")
+    private String questionTags;
 
     @Column(name = "sequence_number", nullable = false)
     private int sequenceNumber;
