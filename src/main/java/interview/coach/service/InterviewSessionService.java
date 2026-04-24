@@ -45,6 +45,8 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import static interview.coach.api.dto.SessionDtos.durationSeconds;
 
@@ -213,21 +215,21 @@ public class InterviewSessionService {
         session.setUpdatedAt(now);
         interviewSessionRepository.save(session);
 
-        sessionReportRepository.findBySessionId(sessionId).orElseGet(() -> {
-            SessionReport report = new SessionReport();
-            report.setSession(session);
-            report.setStatus(ReportStatus.PENDING);
-            report.setRequestedAt(now);
-            report.setCreatedAt(now);
-            report.setUpdatedAt(now);
-            // TODO: Убрать и заменить на вызов AI
-            report.setSummaryText("Ты хорошо постарался! Молодец!\nВ тестовом режиме не доступен полный отчёт.");
-            report.setOverallScore(new BigDecimal(1));
-            return sessionReportRepository.save(report);
-        });
-
-        reportGenerationService.generateForAsync(sessionId);
+        triggerReportGenerationAfterCommit(sessionId);
         return toResponse(session);
+    }
+
+    private void triggerReportGenerationAfterCommit(UUID sessionId) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    reportGenerationService.generateForAsync(sessionId);
+                }
+            });
+            return;
+        }
+        reportGenerationService.generateForAsync(sessionId);
     }
 
     private void trimTrailingUnansweredQuestion(InterviewSession session) {
@@ -254,9 +256,6 @@ public class InterviewSessionService {
                 .orElseGet(() -> {
                     SessionReport pending = new SessionReport();
                     pending.setStatus(ReportStatus.PENDING);
-                    // TODO: Убрать
-                    pending.setSummaryText("Ты хорошо постарался! Молодец!\nВ тестовом режиме не доступен полный отчёт.");
-                    pending.setOverallScore(new BigDecimal(1));
                     return pending;
                 });
         List<ReportItemResponse> items = report.getId() == null ? List.of() : reportItemRepository.findByReport_IdOrderBySortOrderAsc(report.getId()).stream()

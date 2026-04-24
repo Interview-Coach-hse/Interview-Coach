@@ -6,9 +6,11 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -16,6 +18,15 @@ public interface InterviewSessionRepository extends JpaRepository<InterviewSessi
 
     @EntityGraph(attributePaths = {"profile", "user"})
     Optional<InterviewSession> findByIdAndUserId(UUID id, UUID userId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select s
+            from InterviewSession s
+            join fetch s.profile p
+            where s.id = :id
+            """)
+    Optional<InterviewSession> findByIdForUpdate(@Param("id") UUID id);
 
     boolean existsByUserIdAndStateIn(UUID userId, Collection<SessionState> states);
 

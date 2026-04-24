@@ -61,17 +61,9 @@ public class ReportGenerationService {
 
     @Transactional
     public void generateFor(java.util.UUID sessionId) {
-        InterviewSession session = interviewSessionRepository.findById(sessionId)
+        InterviewSession session = interviewSessionRepository.findByIdForUpdate(sessionId)
                 .orElseThrow(() -> new IllegalStateException("Interview session not found for report generation: " + sessionId));
         LocalDateTime now = LocalDateTime.now();
-        ExternalRequest externalRequest = new ExternalRequest();
-        externalRequest.setSession(session);
-        externalRequest.setRequestType(ExternalRequestType.FINAL_REPORT);
-        externalRequest.setRequestStatus(ExternalRequestStatus.SENT);
-        externalRequest.setAttemptCount(1);
-        externalRequest.setCreatedAt(now);
-        externalRequest.setSentAt(now);
-
         SessionReport report = sessionReportRepository.findBySessionId(session.getId()).orElseGet(() -> {
             SessionReport created = new SessionReport();
             created.setSession(session);
@@ -79,8 +71,20 @@ public class ReportGenerationService {
             created.setCreatedAt(now);
             created.setUpdatedAt(now);
             created.setRequestedAt(now);
-            return created;
+            return sessionReportRepository.save(created);
         });
+
+        if (report.getStatus() == ReportStatus.READY) {
+            return;
+        }
+
+        ExternalRequest externalRequest = new ExternalRequest();
+        externalRequest.setSession(session);
+        externalRequest.setRequestType(ExternalRequestType.FINAL_REPORT);
+        externalRequest.setRequestStatus(ExternalRequestStatus.SENT);
+        externalRequest.setAttemptCount(1);
+        externalRequest.setCreatedAt(now);
+        externalRequest.setSentAt(now);
 
         try {
             var messages = sessionMessageRepository.findBySessionIdOrderBySequenceNumberAsc(
