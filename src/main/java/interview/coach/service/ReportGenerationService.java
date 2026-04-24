@@ -50,6 +50,7 @@ public class ReportGenerationService {
     }
 
     @Async
+    @Transactional
     public void generateForAsync(java.util.UUID sessionId) {
         try {
             generateFor(sessionId);
