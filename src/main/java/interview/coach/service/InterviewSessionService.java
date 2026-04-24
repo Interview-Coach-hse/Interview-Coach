@@ -207,6 +207,8 @@ public class InterviewSessionService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Session cannot be finished from current state");
         }
 
+        trimTrailingUnansweredQuestion(session);
+
         LocalDateTime now = LocalDateTime.now();
         session.setState(SessionState.PROCESSING);
         session.setFinishedAt(now);
@@ -228,6 +230,23 @@ public class InterviewSessionService {
 
         reportGenerationService.generateForAsync(sessionId);
         return toResponse(session);
+    }
+
+    private void trimTrailingUnansweredQuestion(InterviewSession session) {
+        List<SessionMessage> messages = sessionMessageRepository.findBySessionIdOrderBySequenceNumberAsc(session.getId());
+        if (messages.isEmpty()) {
+            return;
+        }
+
+        SessionMessage lastMessage = messages.get(messages.size() - 1);
+        if (lastMessage.getSenderType() != SenderType.INTERVIEWER || lastMessage.getMessageType() != MessageType.QUESTION) {
+            return;
+        }
+
+        sessionMessageRepository.delete(lastMessage);
+        if (session.getCurrentQuestionIndex() != null && session.getCurrentQuestionIndex() > 0) {
+            session.setCurrentQuestionIndex(session.getCurrentQuestionIndex() - 1);
+        }
     }
 
     public ReportResponse getReport(AppUserPrincipal principal, UUID sessionId) {
@@ -311,36 +330,47 @@ public class InterviewSessionService {
         int nextQuestionIndex = session.getCurrentQuestionIndex() == null ? 0 : session.getCurrentQuestionIndex();
         try {
             var prompt = assessmentAiService.getNextPrompt(session, nextQuestionIndex);
-
-            ExternalRequest externalRequest = new ExternalRequest();
-            externalRequest.setSession(session);
-            externalRequest.setRequestType(ExternalRequestType.NEXT_QUESTION);
-            externalRequest.setRequestStatus(prompt.externalRequestSucceeded() ? ExternalRequestStatus.SUCCESS : ExternalRequestStatus.FAILED);
-            externalRequest.setRequestPayload(prompt.requestPayload());
-            externalRequest.setResponsePayload(prompt.responsePayload());
-            externalRequest.setErrorMessage(prompt.errorMessage());
-            externalRequest.setAttemptCount(1);
-            externalRequest.setCreatedAt(LocalDateTime.now());
-            externalRequest.setSentAt(LocalDateTime.now());
-            externalRequest.setCompletedAt(LocalDateTime.now());
-            externalRequestRepository.save(externalRequest);
-
-            int sequenceNumber = (int) sessionMessageRepository.countBySessionId(session.getId());
-            SessionMessage promptMessage = saveMessage(session, prompt.senderType(), prompt.messageType(), prompt.content(), sequenceNumber);
-            promptMessage.setQuestionExternalId(prompt.questionExternalId());
-            promptMessage.setQuestionTopicCode(prompt.questionTopicCode());
-            promptMessage.setQuestionTags(prompt.questionTags() == null || prompt.questionTags().isEmpty() ? null : writeJson(prompt.questionTags()));
-            promptMessage = sessionMessageRepository.save(promptMessage);
-            if (prompt.advancesQuestionIndex()) {
-                session.setCurrentQuestionIndex(nextQuestionIndex + 1);
-            }
-            session.setLastErrorCode(null);
-            session.setLastErrorMessage(null);
-            return promptMessage;
+            return persistPrompt(session, nextQuestionIndex, prompt, true);
         } catch (AssessmentIntegrationException exception) {
             registerAssessmentFailure(session, ExternalRequestType.NEXT_QUESTION, null, exception);
-            throw exception;
+            var fallbackPrompt = assessmentAiService.getLocalFallbackPrompt(session, nextQuestionIndex, exception.getMessage());
+            return persistPrompt(session, nextQuestionIndex, fallbackPrompt, false);
         }
+    }
+
+    private SessionMessage persistPrompt(
+            InterviewSession session,
+            int nextQuestionIndex,
+            AssessmentAiService.NextPromptResult prompt,
+            boolean clearErrors
+    ) {
+        ExternalRequest externalRequest = new ExternalRequest();
+        externalRequest.setSession(session);
+        externalRequest.setRequestType(ExternalRequestType.NEXT_QUESTION);
+        externalRequest.setRequestStatus(prompt.externalRequestSucceeded() ? ExternalRequestStatus.SUCCESS : ExternalRequestStatus.FAILED);
+        externalRequest.setRequestPayload(prompt.requestPayload());
+        externalRequest.setResponsePayload(prompt.responsePayload());
+        externalRequest.setErrorMessage(prompt.errorMessage());
+        externalRequest.setAttemptCount(1);
+        externalRequest.setCreatedAt(LocalDateTime.now());
+        externalRequest.setSentAt(LocalDateTime.now());
+        externalRequest.setCompletedAt(LocalDateTime.now());
+        externalRequestRepository.save(externalRequest);
+
+        int sequenceNumber = (int) sessionMessageRepository.countBySessionId(session.getId());
+        SessionMessage promptMessage = saveMessage(session, prompt.senderType(), prompt.messageType(), prompt.content(), sequenceNumber);
+        promptMessage.setQuestionExternalId(prompt.questionExternalId());
+        promptMessage.setQuestionTopicCode(prompt.questionTopicCode());
+        promptMessage.setQuestionTags(prompt.questionTags() == null || prompt.questionTags().isEmpty() ? null : writeJson(prompt.questionTags()));
+        promptMessage = sessionMessageRepository.save(promptMessage);
+        if (prompt.advancesQuestionIndex()) {
+            session.setCurrentQuestionIndex(nextQuestionIndex + 1);
+        }
+        if (clearErrors) {
+            session.setLastErrorCode(null);
+            session.setLastErrorMessage(null);
+        }
+        return promptMessage;
     }
 
     private void registerAssessmentFailure(

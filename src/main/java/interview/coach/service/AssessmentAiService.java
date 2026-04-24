@@ -85,6 +85,16 @@ public class AssessmentAiService {
         return fallbackPrompt(profile, zeroBasedQuestionIndex, requestView, null);
     }
 
+    public NextPromptResult getLocalFallbackPrompt(InterviewSession session, int zeroBasedQuestionIndex, String errorMessage) {
+        InterviewProfile profile = session.getProfile();
+        Map<String, Object> requestView = Map.of(
+                "specialization", toSpecialization(profile.getDirection()),
+                "grade", toGrade(profile.getLevel()),
+                "limit", Math.max(properties.questionLimit(), zeroBasedQuestionIndex + 1)
+        );
+        return fallbackPrompt(profile, zeroBasedQuestionIndex, requestView, errorMessage);
+    }
+
     public AssessmentReportResult generateReport(InterviewSession session, List<SessionMessage> messages) {
         ReportRequest request = buildReportRequest(session, messages);
         String requestPayload = writeJson(request);
