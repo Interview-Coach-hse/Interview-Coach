@@ -12,6 +12,7 @@ public record AssessmentClientProperties(
         String mode,
         int questionLimit,
         String reportLanguage,
+        long timeoutMillis,
         int reportPollAttempts,
         long reportPollDelayMillis,
         int circuitBreakerFailureThreshold,

@@ -54,6 +54,7 @@ class AssessmentAiServiceTest {
                 "sync",
                 10,
                 "ru",
+                900000,
                 5,
                 10,
                 2,
