@@ -131,6 +131,7 @@ public class AuthService {
         return emailVerificationService.issueRegistrationCode(user.getEmail());
     }
 
+    @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
         log.info("Login request received for email={}", request.email());
         User user = userRepository.findByEmailIgnoreCase(request.email().trim().toLowerCase())
@@ -156,6 +157,7 @@ public class AuthService {
         emailVerificationService.confirmRegistrationCode(request.email(), request.code());
     }
 
+    @Transactional
     public AuthResponse refresh(RefreshTokenRequest request) {
         var currentRefreshToken = refreshTokenService.requireActive(request.refreshToken());
         User user = currentRefreshToken.getUser();
