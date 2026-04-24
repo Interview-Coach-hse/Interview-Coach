@@ -226,8 +226,7 @@ public class InterviewSessionService {
             return sessionReportRepository.save(report);
         });
 
-        reportGenerationService.generateFor(session);
-        interviewSessionRepository.save(session);
+        reportGenerationService.generateForAsync(sessionId);
         return toResponse(session);
     }
 

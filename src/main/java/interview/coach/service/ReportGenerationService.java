@@ -10,12 +10,14 @@ import interview.coach.domain.entity.ReportItem;
 import interview.coach.domain.entity.SessionReport;
 import interview.coach.exception.AssessmentIntegrationException;
 import interview.coach.repository.ExternalRequestRepository;
+import interview.coach.repository.InterviewSessionRepository;
 import interview.coach.repository.ReportItemRepository;
 import interview.coach.repository.SessionMessageRepository;
 import interview.coach.repository.SessionReportRepository;
 import java.time.LocalDateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +26,7 @@ public class ReportGenerationService {
 
     private static final Logger log = LoggerFactory.getLogger(ReportGenerationService.class);
 
+    private final InterviewSessionRepository interviewSessionRepository;
     private final ExternalRequestRepository externalRequestRepository;
     private final SessionReportRepository sessionReportRepository;
     private final ReportItemRepository reportItemRepository;
@@ -31,12 +34,14 @@ public class ReportGenerationService {
     private final AssessmentAiService assessmentAiService;
 
     public ReportGenerationService(
+            InterviewSessionRepository interviewSessionRepository,
             ExternalRequestRepository externalRequestRepository,
             SessionReportRepository sessionReportRepository,
             ReportItemRepository reportItemRepository,
             SessionMessageRepository sessionMessageRepository,
             AssessmentAiService assessmentAiService
     ) {
+        this.interviewSessionRepository = interviewSessionRepository;
         this.externalRequestRepository = externalRequestRepository;
         this.sessionReportRepository = sessionReportRepository;
         this.reportItemRepository = reportItemRepository;
@@ -44,8 +49,19 @@ public class ReportGenerationService {
         this.assessmentAiService = assessmentAiService;
     }
 
+    @Async
+    public void generateForAsync(java.util.UUID sessionId) {
+        try {
+            generateFor(sessionId);
+        } catch (Exception exception) {
+            log.error("Async report generation failed for session {}", sessionId, exception);
+        }
+    }
+
     @Transactional
-    public void generateFor(InterviewSession session) {
+    public void generateFor(java.util.UUID sessionId) {
+        InterviewSession session = interviewSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalStateException("Interview session not found for report generation: " + sessionId));
         LocalDateTime now = LocalDateTime.now();
         ExternalRequest externalRequest = new ExternalRequest();
         externalRequest.setSession(session);

@@ -32,6 +32,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -58,6 +59,9 @@ class InterviewSessionServiceTest {
 
     @Mock
     private ObjectMapper objectMapper;
+
+    @Mock
+    private ReportGenerationService reportGenerationService;
 
     @InjectMocks
     private InterviewSessionService interviewSessionService;
@@ -89,6 +93,22 @@ class InterviewSessionServiceTest {
         assertThat(response.action()).isEqualTo("PAUSED");
         assertThat(response.session().state()).isEqualTo(SessionState.PAUSED);
         verify(interviewSessionRepository).save(session);
+    }
+
+    @Test
+    void finishSessionShouldReturnProcessingAndTriggerBackgroundGeneration() {
+        AppUserPrincipal principal = principal("user@example.com", "USER");
+        InterviewSession session = session(principal.userId(), SessionState.IN_PROGRESS);
+
+        when(interviewSessionRepository.findByIdAndUserId(session.getId(), principal.userId())).thenReturn(Optional.of(session));
+        when(interviewSessionRepository.save(any(InterviewSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(sessionReportRepository.findBySessionId(session.getId())).thenReturn(Optional.empty());
+        when(sessionReportRepository.save(any(interview.coach.domain.entity.SessionReport.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var response = interviewSessionService.finishSession(principal, session.getId());
+
+        assertThat(response.state()).isEqualTo(SessionState.PROCESSING);
+        verify(reportGenerationService).generateForAsync(eq(session.getId()));
     }
 
     private static AppUserPrincipal principal(String email, String roleCode) {
