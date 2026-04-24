@@ -11,6 +11,9 @@ import org.springframework.data.jpa.domain.Specification;
 
 public interface QuestionRepository extends JpaRepository<Question, UUID>, JpaSpecificationExecutor<Question> {
 
+    @EntityGraph(attributePaths = "createdBy")
+    java.util.Optional<Question> findFirstByTextIgnoreCase(String text);
+
     @Override
     @EntityGraph(attributePaths = "createdBy")
     Page<Question> findAll(Specification<Question> specification, Pageable pageable);

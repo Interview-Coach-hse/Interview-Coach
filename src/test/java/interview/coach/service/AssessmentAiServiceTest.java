@@ -55,6 +55,8 @@ class AssessmentAiServiceTest {
                 10,
                 "ru",
                 900000,
+                5000,
+                60000,
                 5,
                 10,
                 2,

@@ -15,6 +15,7 @@ tags:
   - name: Progress
   - name: Admin Users
   - name: Admin Profiles
+  - name: Admin Import
   - name: Admin Questions
   - name: Admin Profile Questions
 components:
@@ -382,6 +383,73 @@ components:
           type: integer
           format: int64
         totalPages:
+          type: integer
+    ImportQuestionPayload:
+      type: object
+      properties:
+        text:
+          type: string
+        questionType:
+          $ref: '#/components/schemas/QuestionType'
+        difficulty:
+          $ref: '#/components/schemas/InterviewLevel'
+        direction:
+          $ref: '#/components/schemas/InterviewDirection'
+        status:
+          $ref: '#/components/schemas/QuestionStatus'
+        orderIndex:
+          type: integer
+        required:
+          type: boolean
+    ImportProfilePayload:
+      type: object
+      required: [title, description, direction, level]
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        direction:
+          $ref: '#/components/schemas/InterviewDirection'
+        level:
+          $ref: '#/components/schemas/InterviewLevel'
+        tags:
+          type: array
+          items:
+            type: string
+    ImportRequest:
+      type: object
+      properties:
+        profile:
+          $ref: '#/components/schemas/ImportProfilePayload'
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImportQuestionPayload'
+      description: |
+        Supported JSON formats:
+        1. Array of questions.
+        2. Object with `questions`.
+        3. Object with `profile` and `questions`.
+    ImportResponse:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [QUESTIONS, PROFILE]
+        profileId:
+          $ref: '#/components/schemas/UUID'
+          nullable: true
+        profileTitle:
+          type: string
+          nullable: true
+        totalQuestions:
+          type: integer
+        createdQuestions:
+          type: integer
+        reusedQuestions:
+          type: integer
+        linkedQuestions:
           type: integer
     CreateSessionRequest:
       type: object
@@ -1520,6 +1588,34 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/QuestionResponse'
+  /admin/import:
+    post:
+      tags: [Admin Import]
+      summary: Import questions or profile bundle from JSON file
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Import summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResponse'
+        '400':
+          description: Invalid import payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /admin/questions/{questionId}:
     get:
       tags: [Admin Questions]
