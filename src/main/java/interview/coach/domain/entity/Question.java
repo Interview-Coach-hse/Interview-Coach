@@ -1,7 +1,5 @@
 package interview.coach.domain.entity;
 
-import interview.coach.domain.DomainEnums.InterviewDirection;
-import interview.coach.domain.DomainEnums.InterviewLevel;
 import interview.coach.domain.DomainEnums.QuestionStatus;
 import interview.coach.domain.DomainEnums.QuestionType;
 import jakarta.persistence.Column;
@@ -38,13 +36,13 @@ public class Question {
     @Column(name = "question_type", nullable = false, length = 30)
     private QuestionType questionType;
 
-    @Enumerated(EnumType.STRING)
-    @Column(length = 30)
-    private InterviewLevel difficulty;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "difficulty_id")
+    private InterviewLevelRef difficulty;
 
-    @Enumerated(EnumType.STRING)
-    @Column(length = 50)
-    private InterviewDirection direction;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "direction_id")
+    private InterviewDirectionRef direction;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)

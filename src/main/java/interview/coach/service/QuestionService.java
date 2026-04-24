@@ -3,8 +3,6 @@ package interview.coach.service;
 import interview.coach.api.dto.QuestionDtos.QuestionPageResponse;
 import interview.coach.api.dto.QuestionDtos.QuestionRequest;
 import interview.coach.api.dto.QuestionDtos.QuestionResponse;
-import interview.coach.domain.DomainEnums.InterviewDirection;
-import interview.coach.domain.DomainEnums.InterviewLevel;
 import interview.coach.domain.DomainEnums.QuestionStatus;
 import interview.coach.domain.DomainEnums.QuestionType;
 import interview.coach.domain.entity.Question;
@@ -30,17 +28,24 @@ public class QuestionService {
 
     private final QuestionRepository questionRepository;
     private final UserService userService;
+    private final CatalogReferenceService catalogReferenceService;
 
-    public QuestionService(QuestionRepository questionRepository, UserService userService) {
+    public QuestionService(
+            QuestionRepository questionRepository,
+            UserService userService,
+            CatalogReferenceService catalogReferenceService
+    ) {
         this.questionRepository = questionRepository;
         this.userService = userService;
+        this.catalogReferenceService = catalogReferenceService;
     }
 
+    @Transactional(readOnly = true)
     public QuestionPageResponse getAll(
             String query,
             String search,
-            InterviewDirection direction,
-            InterviewLevel difficulty,
+            String direction,
+            String difficulty,
             QuestionType questionType,
             QuestionStatus status,
             UUID excludeProfileId,
@@ -66,6 +71,7 @@ public class QuestionService {
         return QuestionPageResponse.from(questionRepository.findAll(specification, pageable).map(this::toResponse));
     }
 
+    @Transactional(readOnly = true)
     public QuestionResponse getById(UUID questionId) {
         return toResponse(requireQuestion(questionId));
     }
@@ -78,8 +84,8 @@ public class QuestionService {
         Question question = new Question();
         question.setText(request.text());
         question.setQuestionType(request.questionType());
-        question.setDifficulty(request.difficulty());
-        question.setDirection(request.direction());
+        question.setDifficulty(request.difficulty() == null ? null : catalogReferenceService.requireLevel(request.difficulty()));
+        question.setDirection(request.direction() == null ? null : catalogReferenceService.requireDirection(request.direction()));
         question.setStatus(request.status() == null ? QuestionStatus.ACTIVE : request.status());
         question.setCreatedBy(creator);
         question.setCreatedAt(now);
@@ -92,8 +98,8 @@ public class QuestionService {
         Question question = requireQuestion(questionId);
         question.setText(request.text());
         question.setQuestionType(request.questionType());
-        question.setDifficulty(request.difficulty());
-        question.setDirection(request.direction());
+        question.setDifficulty(request.difficulty() == null ? null : catalogReferenceService.requireLevel(request.difficulty()));
+        question.setDirection(request.direction() == null ? null : catalogReferenceService.requireDirection(request.direction()));
         question.setStatus(request.status() == null ? question.getStatus() : request.status());
         question.setUpdatedAt(LocalDateTime.now());
         return toResponse(questionRepository.save(question));
@@ -118,18 +124,18 @@ public class QuestionService {
         return (root, query, cb) -> cb.like(cb.lower(root.get("text")), pattern);
     }
 
-    private Specification<Question> hasDirection(InterviewDirection direction) {
+    private Specification<Question> hasDirection(String direction) {
         if (direction == null) {
             return null;
         }
-        return (root, query, cb) -> cb.equal(root.get("direction"), direction);
+        return (root, query, cb) -> cb.equal(cb.upper(root.get("direction").get("code")), direction.trim().toUpperCase(Locale.ROOT));
     }
 
-    private Specification<Question> hasDifficulty(InterviewLevel difficulty) {
+    private Specification<Question> hasDifficulty(String difficulty) {
         if (difficulty == null) {
             return null;
         }
-        return (root, query, cb) -> cb.equal(root.get("difficulty"), difficulty);
+        return (root, query, cb) -> cb.equal(cb.upper(root.get("difficulty").get("code")), difficulty.trim().toUpperCase(Locale.ROOT));
     }
 
     private Specification<Question> hasQuestionType(QuestionType questionType) {
@@ -203,8 +209,8 @@ public class QuestionService {
                 question.getId(),
                 question.getText(),
                 question.getQuestionType(),
-                question.getDifficulty(),
-                question.getDirection(),
+                question.getDifficulty() == null ? null : question.getDifficulty().getCode(),
+                question.getDirection() == null ? null : question.getDirection().getCode(),
                 question.getStatus(),
                 question.getCreatedBy().getId(),
                 question.getCreatedAt(),

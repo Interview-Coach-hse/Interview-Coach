@@ -1,14 +1,11 @@
 package interview.coach.domain.entity;
 
-import interview.coach.domain.DomainEnums.InterviewDirection;
-import interview.coach.domain.DomainEnums.InterviewLevel;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
@@ -32,13 +29,13 @@ public class UserPreference {
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "preferred_direction", length = 50)
-    private InterviewDirection preferredDirection;
+    @ManyToOne
+    @JoinColumn(name = "preferred_direction_id")
+    private InterviewDirectionRef preferredDirection;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "preferred_level", length = 30)
-    private InterviewLevel preferredLevel;
+    @ManyToOne
+    @JoinColumn(name = "preferred_level_id")
+    private InterviewLevelRef preferredLevel;
 
     @Column(name = "preferred_language", length = 30)
     private String preferredLanguage;

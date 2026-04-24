@@ -2,13 +2,13 @@ package interview.coach.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import interview.coach.api.dto.SessionDtos.CreateSessionRequest;
-import interview.coach.domain.DomainEnums.InterviewDirection;
-import interview.coach.domain.DomainEnums.InterviewLevel;
 import interview.coach.domain.DomainEnums.MessageType;
 import interview.coach.domain.DomainEnums.ProfileStatus;
 import interview.coach.domain.DomainEnums.SenderType;
 import interview.coach.domain.DomainEnums.SessionState;
 import interview.coach.domain.entity.ExternalRequest;
+import interview.coach.domain.entity.InterviewDirectionRef;
+import interview.coach.domain.entity.InterviewLevelRef;
 import interview.coach.domain.entity.InterviewProfile;
 import interview.coach.domain.entity.InterviewSession;
 import interview.coach.domain.entity.Role;
@@ -214,14 +214,20 @@ class InterviewSessionServiceTest {
         InterviewProfile profile = new InterviewProfile();
         profile.setId(UUID.randomUUID());
         profile.setTitle("Java Backend");
-        profile.setDirection(InterviewDirection.BACKEND);
-        profile.setLevel(InterviewLevel.JUNIOR);
+        InterviewDirectionRef direction = new InterviewDirectionRef();
+        direction.setCode("BACKEND");
+        InterviewLevelRef level = new InterviewLevelRef();
+        level.setCode("JUNIOR");
+        profile.setDirection(direction);
+        profile.setLevel(level);
         profile.setStatus(ProfileStatus.PUBLISHED);
 
         InterviewSession session = new InterviewSession();
         session.setId(UUID.randomUUID());
         session.setUser(user);
         session.setProfile(profile);
+        session.setDirectionSnapshot(direction);
+        session.setLevelSnapshot(level);
         session.setState(state);
         session.setCreatedAt(LocalDateTime.now());
         session.setUpdatedAt(LocalDateTime.now());

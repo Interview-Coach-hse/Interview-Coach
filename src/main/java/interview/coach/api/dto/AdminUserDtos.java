@@ -1,7 +1,5 @@
 package interview.coach.api.dto;
 
-import interview.coach.domain.DomainEnums.InterviewDirection;
-import interview.coach.domain.DomainEnums.InterviewLevel;
 import interview.coach.domain.DomainEnums.UserStatus;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
@@ -18,8 +16,8 @@ public final class AdminUserDtos {
             @Size(max = 100) String lastName,
             UserStatus status,
             String roleCode,
-            InterviewDirection preferredDirection,
-            InterviewLevel preferredLevel,
+            String preferredDirection,
+            String preferredLevel,
             @Size(max = 30) String preferredLanguage,
             @Size(max = 10) String interfaceLanguage,
             @Size(max = 20) String theme

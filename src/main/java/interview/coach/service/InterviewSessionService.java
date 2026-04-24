@@ -11,8 +11,6 @@ import interview.coach.api.dto.SessionDtos.SendMessageResponse;
 import interview.coach.api.dto.SessionDtos.SessionMessageResponse;
 import interview.coach.api.dto.SessionDtos.SessionResponse;
 import interview.coach.api.dto.SessionDtos.SessionStateResponse;
-import interview.coach.domain.DomainEnums.InterviewDirection;
-import interview.coach.domain.DomainEnums.InterviewLevel;
 import interview.coach.domain.DomainEnums.MessageType;
 import interview.coach.domain.DomainEnums.ReportStatus;
 import interview.coach.domain.DomainEnums.SenderType;
@@ -271,8 +269,8 @@ public class InterviewSessionService {
             AppUserPrincipal principal,
             SessionState state,
             UUID profileId,
-            InterviewDirection direction,
-            InterviewLevel level,
+            String direction,
+            String level,
             LocalDateTime createdFrom,
             LocalDateTime createdTo,
             int page,
@@ -410,8 +408,8 @@ public class InterviewSessionService {
                 session.getId(),
                 session.getProfile().getId(),
                 session.getProfile().getTitle(),
-                session.getDirectionSnapshot(),
-                session.getLevelSnapshot(),
+                session.getDirectionSnapshot().getCode(),
+                session.getLevelSnapshot().getCode(),
                 session.getState(),
                 session.getCurrentQuestionIndex(),
                 session.getStartedAt(),
@@ -453,18 +451,18 @@ public class InterviewSessionService {
         return (root, query, cb) -> cb.equal(root.get("profile").get("id"), profileId);
     }
 
-    private Specification<InterviewSession> hasDirectionSnapshot(InterviewDirection direction) {
+    private Specification<InterviewSession> hasDirectionSnapshot(String direction) {
         if (direction == null) {
             return null;
         }
-        return (root, query, cb) -> cb.equal(root.get("directionSnapshot"), direction);
+        return (root, query, cb) -> cb.equal(cb.upper(root.get("directionSnapshot").get("code")), direction.trim().toUpperCase());
     }
 
-    private Specification<InterviewSession> hasLevelSnapshot(InterviewLevel level) {
+    private Specification<InterviewSession> hasLevelSnapshot(String level) {
         if (level == null) {
             return null;
         }
-        return (root, query, cb) -> cb.equal(root.get("levelSnapshot"), level);
+        return (root, query, cb) -> cb.equal(cb.upper(root.get("levelSnapshot").get("code")), level.trim().toUpperCase());
     }
 
     private Specification<InterviewSession> createdFrom(LocalDateTime from) {

@@ -3,8 +3,6 @@ package interview.coach.service;
 import interview.coach.api.dto.ProfileDtos.ProfileRequest;
 import interview.coach.api.dto.ProfileDtos.ProfileResponse;
 import interview.coach.api.dto.PageDtos.PageResponse;
-import interview.coach.domain.DomainEnums.InterviewDirection;
-import interview.coach.domain.DomainEnums.InterviewLevel;
 import interview.coach.domain.DomainEnums.ProfileStatus;
 import interview.coach.domain.entity.InterviewProfile;
 import interview.coach.domain.entity.ProfileTag;
@@ -41,24 +39,27 @@ public class InterviewProfileService {
     private final interview.coach.repository.ProfileQuestionRepository profileQuestionRepository;
     private final TagRepository tagRepository;
     private final UserService userService;
+    private final CatalogReferenceService catalogReferenceService;
 
     public InterviewProfileService(
             InterviewProfileRepository interviewProfileRepository,
             ProfileTagRepository profileTagRepository,
             interview.coach.repository.ProfileQuestionRepository profileQuestionRepository,
             TagRepository tagRepository,
-            UserService userService
+            UserService userService,
+            CatalogReferenceService catalogReferenceService
     ) {
         this.interviewProfileRepository = interviewProfileRepository;
         this.profileTagRepository = profileTagRepository;
         this.profileQuestionRepository = profileQuestionRepository;
         this.tagRepository = tagRepository;
         this.userService = userService;
+        this.catalogReferenceService = catalogReferenceService;
     }
 
     public PageResponse<ProfileResponse> getCatalog(
-            InterviewDirection direction,
-            InterviewLevel level,
+            String direction,
+            String level,
             String query,
             String tag,
             int page,
@@ -69,8 +70,8 @@ public class InterviewProfileService {
 
     public PageResponse<ProfileResponse> getAdminCatalog(
             ProfileStatus status,
-            InterviewDirection direction,
-            InterviewLevel level,
+            String direction,
+            String level,
             String query,
             String tag,
             int page,
@@ -81,8 +82,8 @@ public class InterviewProfileService {
 
     private PageResponse<ProfileResponse> getProfilesCatalog(
             ProfileStatus status,
-            InterviewDirection direction,
-            InterviewLevel level,
+            String direction,
+            String level,
             String query,
             String tag,
             int page,
@@ -129,8 +130,8 @@ public class InterviewProfileService {
         InterviewProfile profile = new InterviewProfile();
         profile.setTitle(request.title());
         profile.setDescription(request.description());
-        profile.setDirection(request.direction());
-        profile.setLevel(request.level());
+        profile.setDirection(catalogReferenceService.requireDirection(request.direction()));
+        profile.setLevel(catalogReferenceService.requireLevel(request.level()));
         profile.setStatus(ProfileStatus.DRAFT);
         profile.setCreatedBy(author);
         profile.setCreatedAt(now);
@@ -146,8 +147,8 @@ public class InterviewProfileService {
         InterviewProfile profile = requireProfile(profileId);
         profile.setTitle(request.title());
         profile.setDescription(request.description());
-        profile.setDirection(request.direction());
-        profile.setLevel(request.level());
+        profile.setDirection(catalogReferenceService.requireDirection(request.direction()));
+        profile.setLevel(catalogReferenceService.requireLevel(request.level()));
         profile.setUpdatedAt(LocalDateTime.now());
         interviewProfileRepository.save(profile);
         syncTags(profile, request.tags());
@@ -198,18 +199,18 @@ public class InterviewProfileService {
         return (root, query, cb) -> cb.equal(root.get("status"), status);
     }
 
-    private Specification<InterviewProfile> hasDirection(InterviewDirection direction) {
+    private Specification<InterviewProfile> hasDirection(String direction) {
         if (direction == null) {
             return null;
         }
-        return (root, query, cb) -> cb.equal(root.get("direction"), direction);
+        return (root, query, cb) -> cb.equal(cb.upper(root.get("direction").get("code")), direction.trim().toUpperCase(Locale.ROOT));
     }
 
-    private Specification<InterviewProfile> hasLevel(InterviewLevel level) {
+    private Specification<InterviewProfile> hasLevel(String level) {
         if (level == null) {
             return null;
         }
-        return (root, query, cb) -> cb.equal(root.get("level"), level);
+        return (root, query, cb) -> cb.equal(cb.upper(root.get("level").get("code")), level.trim().toUpperCase(Locale.ROOT));
     }
 
     private Specification<InterviewProfile> matchesQuery(String queryText) {
@@ -301,8 +302,8 @@ public class InterviewProfileService {
                 profile.getId(),
                 profile.getTitle(),
                 profile.getDescription(),
-                profile.getDirection(),
-                profile.getLevel(),
+                profile.getDirection().getCode(),
+                profile.getLevel().getCode(),
                 profile.getStatus(),
                 tags,
                 questions,

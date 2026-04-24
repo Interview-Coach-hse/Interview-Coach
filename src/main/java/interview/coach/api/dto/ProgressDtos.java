@@ -1,7 +1,5 @@
 package interview.coach.api.dto;
 
-import interview.coach.domain.DomainEnums.InterviewDirection;
-import interview.coach.domain.DomainEnums.InterviewLevel;
 import interview.coach.domain.DomainEnums.ScoreSource;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -17,8 +15,8 @@ public final class ProgressDtos {
             UUID sessionId,
             LocalDateTime createdAt,
             BigDecimal score,
-            InterviewDirection direction,
-            InterviewLevel level,
+            String direction,
+            String level,
             ScoreSource scoreSource
     ) {
     }

@@ -11,6 +11,19 @@ VALUES
     ('30000000-0000-0000-0000-000000000006', 'kubernetes', CURRENT_TIMESTAMP)
 ON CONFLICT (id) DO NOTHING;
 
+INSERT INTO interview_directions (id, code, name, created_at, updated_at)
+VALUES
+    ('12000000-0000-0000-0000-000000000001', 'BACKEND', 'Backend', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('12000000-0000-0000-0000-000000000002', 'FRONTEND', 'Frontend', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('12000000-0000-0000-0000-000000000003', 'DEVOPS', 'DevOps', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO interview_levels (id, code, name, created_at, updated_at)
+VALUES
+    ('13000000-0000-0000-0000-000000000001', 'JUNIOR', 'Junior', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('13000000-0000-0000-0000-000000000002', 'MIDDLE', 'Middle', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO NOTHING;
+
 INSERT INTO users (
     id, role_id, email, password_hash, first_name, last_name, status, email_verified, created_at, updated_at
 )
@@ -48,23 +61,23 @@ WHERE roles.code = 'USER'
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO user_preferences (
-    id, user_id, preferred_direction, preferred_level, preferred_language, interface_language, theme, updated_at
+    id, user_id, preferred_direction_id, preferred_level_id, preferred_language, interface_language, theme, updated_at
 )
 VALUES
-    ('11000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'BACKEND', 'MIDDLE', 'ru', 'ru', 'system', CURRENT_TIMESTAMP),
-    ('11000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', 'BACKEND', 'MIDDLE', 'ru', 'ru', 'system', CURRENT_TIMESTAMP)
+    ('11000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', '12000000-0000-0000-0000-000000000001', '13000000-0000-0000-0000-000000000002', 'ru', 'ru', 'system', CURRENT_TIMESTAMP),
+    ('11000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', '12000000-0000-0000-0000-000000000001', '13000000-0000-0000-0000-000000000002', 'ru', 'ru', 'system', CURRENT_TIMESTAMP)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO interview_profiles (
-    id, title, description, direction, level, status, created_by, published_at, created_at, updated_at
+    id, title, description, direction_id, level_id, status, created_by, published_at, created_at, updated_at
 )
 VALUES
     (
         '20000000-0000-0000-0000-000000000001',
         'Backend Java Junior',
         'Базовый сценарий для начинающего backend-разработчика: Java Core, Spring Boot, REST и SQL.',
-        'BACKEND',
-        'JUNIOR',
+        '12000000-0000-0000-0000-000000000001',
+        '13000000-0000-0000-0000-000000000001',
         'PUBLISHED',
         '10000000-0000-0000-0000-000000000001',
         CURRENT_TIMESTAMP,
@@ -75,8 +88,8 @@ VALUES
         '20000000-0000-0000-0000-000000000002',
         'Backend Java Middle',
         'Сценарий среднего уровня: транзакции, многопоточность, производительность, индексы и интеграции.',
-        'BACKEND',
-        'MIDDLE',
+        '12000000-0000-0000-0000-000000000001',
+        '13000000-0000-0000-0000-000000000002',
         'PUBLISHED',
         '10000000-0000-0000-0000-000000000001',
         CURRENT_TIMESTAMP,
@@ -87,8 +100,8 @@ VALUES
         '20000000-0000-0000-0000-000000000003',
         'DevOps Middle',
         'Сценарий по Docker, Kubernetes, CI/CD и наблюдаемости для middle DevOps инженера.',
-        'DEVOPS',
-        'MIDDLE',
+        '12000000-0000-0000-0000-000000000003',
+        '13000000-0000-0000-0000-000000000002',
         'PUBLISHED',
         '10000000-0000-0000-0000-000000000001',
         CURRENT_TIMESTAMP,
@@ -98,18 +111,18 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO questions (
-    id, text, question_type, difficulty, direction, status, created_by, created_at, updated_at
+    id, text, question_type, difficulty_id, direction_id, status, created_by, created_at, updated_at
 )
 VALUES
-    ('21000000-0000-0000-0000-000000000001', 'Что такое JVM, JRE и JDK и в чём между ними разница?', 'TECHNICAL', 'JUNIOR', 'BACKEND', 'ACTIVE', '10000000-0000-0000-0000-000000000001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('21000000-0000-0000-0000-000000000002', 'Объясни разницу между @Component, @Service и @Repository в Spring.', 'TECHNICAL', 'JUNIOR', 'BACKEND', 'ACTIVE', '10000000-0000-0000-0000-000000000001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('21000000-0000-0000-0000-000000000003', 'Что такое REST и какие HTTP-методы ты используешь чаще всего?', 'GENERAL', 'JUNIOR', 'BACKEND', 'ACTIVE', '10000000-0000-0000-0000-000000000001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('21000000-0000-0000-0000-000000000004', 'Как работают транзакции в Spring и зачем нужен propagation?', 'TECHNICAL', 'MIDDLE', 'BACKEND', 'ACTIVE', '10000000-0000-0000-0000-000000000001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('21000000-0000-0000-0000-000000000005', 'Когда индекс в PostgreSQL помогает, а когда может только замедлить запись?', 'TECHNICAL', 'MIDDLE', 'BACKEND', 'ACTIVE', '10000000-0000-0000-0000-000000000001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('21000000-0000-0000-0000-000000000006', 'Как бы ты искал причину деградации производительности у REST API под нагрузкой?', 'BEHAVIORAL', 'MIDDLE', 'BACKEND', 'ACTIVE', '10000000-0000-0000-0000-000000000001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('21000000-0000-0000-0000-000000000007', 'Чем отличается Docker image от container и что такое layer cache?', 'TECHNICAL', 'MIDDLE', 'DEVOPS', 'ACTIVE', '10000000-0000-0000-0000-000000000001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('21000000-0000-0000-0000-000000000008', 'Что такое readinessProbe и livenessProbe в Kubernetes?', 'TECHNICAL', 'MIDDLE', 'DEVOPS', 'ACTIVE', '10000000-0000-0000-0000-000000000001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('21000000-0000-0000-0000-000000000009', 'Какие метрики и алерты ты бы поставил для backend-сервиса в production?', 'GENERAL', 'MIDDLE', 'DEVOPS', 'ACTIVE', '10000000-0000-0000-0000-000000000001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ('21000000-0000-0000-0000-000000000001', 'Что такое JVM, JRE и JDK и в чём между ними разница?', 'TECHNICAL', '13000000-0000-0000-0000-000000000001', '12000000-0000-0000-0000-000000000001', 'ACTIVE', '10000000-0000-0000-0000-000000000001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('21000000-0000-0000-0000-000000000002', 'Объясни разницу между @Component, @Service и @Repository в Spring.', 'TECHNICAL', '13000000-0000-0000-0000-000000000001', '12000000-0000-0000-0000-000000000001', 'ACTIVE', '10000000-0000-0000-0000-000000000001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('21000000-0000-0000-0000-000000000003', 'Что такое REST и какие HTTP-методы ты используешь чаще всего?', 'GENERAL', '13000000-0000-0000-0000-000000000001', '12000000-0000-0000-0000-000000000001', 'ACTIVE', '10000000-0000-0000-0000-000000000001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('21000000-0000-0000-0000-000000000004', 'Как работают транзакции в Spring и зачем нужен propagation?', 'TECHNICAL', '13000000-0000-0000-0000-000000000002', '12000000-0000-0000-0000-000000000001', 'ACTIVE', '10000000-0000-0000-0000-000000000001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('21000000-0000-0000-0000-000000000005', 'Когда индекс в PostgreSQL помогает, а когда может только замедлить запись?', 'TECHNICAL', '13000000-0000-0000-0000-000000000002', '12000000-0000-0000-0000-000000000001', 'ACTIVE', '10000000-0000-0000-0000-000000000001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('21000000-0000-0000-0000-000000000006', 'Как бы ты искал причину деградации производительности у REST API под нагрузкой?', 'BEHAVIORAL', '13000000-0000-0000-0000-000000000002', '12000000-0000-0000-0000-000000000001', 'ACTIVE', '10000000-0000-0000-0000-000000000001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('21000000-0000-0000-0000-000000000007', 'Чем отличается Docker image от container и что такое layer cache?', 'TECHNICAL', '13000000-0000-0000-0000-000000000002', '12000000-0000-0000-0000-000000000003', 'ACTIVE', '10000000-0000-0000-0000-000000000001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('21000000-0000-0000-0000-000000000008', 'Что такое readinessProbe и livenessProbe в Kubernetes?', 'TECHNICAL', '13000000-0000-0000-0000-000000000002', '12000000-0000-0000-0000-000000000003', 'ACTIVE', '10000000-0000-0000-0000-000000000001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('21000000-0000-0000-0000-000000000009', 'Какие метрики и алерты ты бы поставил для backend-сервиса в production?', 'GENERAL', '13000000-0000-0000-0000-000000000002', '12000000-0000-0000-0000-000000000003', 'ACTIVE', '10000000-0000-0000-0000-000000000001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO profile_questions (id, profile_id, question_id, order_index, is_required, created_at)
@@ -138,15 +151,15 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO interview_sessions (
-    id, user_id, profile_id, direction_snapshot, level_snapshot, state, current_question_index, started_at, finished_at, created_at, updated_at
+    id, user_id, profile_id, direction_snapshot_id, level_snapshot_id, state, current_question_index, started_at, finished_at, created_at, updated_at
 )
 VALUES
     (
         '40000000-0000-0000-0000-000000000001',
         '10000000-0000-0000-0000-000000000002',
         '20000000-0000-0000-0000-000000000002',
-        'BACKEND',
-        'MIDDLE',
+        '12000000-0000-0000-0000-000000000001',
+        '13000000-0000-0000-0000-000000000002',
         'FINISHED',
         3,
         CURRENT_TIMESTAMP - INTERVAL '2 days',
@@ -158,8 +171,8 @@ VALUES
         '40000000-0000-0000-0000-000000000002',
         '10000000-0000-0000-0000-000000000002',
         '20000000-0000-0000-0000-000000000003',
-        'DEVOPS',
-        'MIDDLE',
+        '12000000-0000-0000-0000-000000000003',
+        '13000000-0000-0000-0000-000000000002',
         'IN_PROGRESS',
         1,
         CURRENT_TIMESTAMP - INTERVAL '3 hours',
@@ -230,15 +243,15 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO interview_sessions (
-    id, user_id, profile_id, direction_snapshot, level_snapshot, state, current_question_index, started_at, finished_at, created_at, updated_at
+    id, user_id, profile_id, direction_snapshot_id, level_snapshot_id, state, current_question_index, started_at, finished_at, created_at, updated_at
 )
 VALUES
     (
         '40000000-0000-0000-0000-000000000010',
         '10000000-0000-0000-0000-000000000001',
         '20000000-0000-0000-0000-000000000001',
-        'BACKEND',
-        'JUNIOR',
+        '12000000-0000-0000-0000-000000000001',
+        '13000000-0000-0000-0000-000000000001',
         'FINISHED',
         3,
         CURRENT_TIMESTAMP - INTERVAL '18 days',
@@ -250,8 +263,8 @@ VALUES
         '40000000-0000-0000-0000-000000000011',
         '10000000-0000-0000-0000-000000000001',
         '20000000-0000-0000-0000-000000000001',
-        'BACKEND',
-        'JUNIOR',
+        '12000000-0000-0000-0000-000000000001',
+        '13000000-0000-0000-0000-000000000001',
         'FINISHED',
         3,
         CURRENT_TIMESTAMP - INTERVAL '13 days',
@@ -263,8 +276,8 @@ VALUES
         '40000000-0000-0000-0000-000000000012',
         '10000000-0000-0000-0000-000000000001',
         '20000000-0000-0000-0000-000000000002',
-        'BACKEND',
-        'MIDDLE',
+        '12000000-0000-0000-0000-000000000001',
+        '13000000-0000-0000-0000-000000000002',
         'FINISHED',
         3,
         CURRENT_TIMESTAMP - INTERVAL '9 days',
@@ -276,8 +289,8 @@ VALUES
         '40000000-0000-0000-0000-000000000013',
         '10000000-0000-0000-0000-000000000001',
         '20000000-0000-0000-0000-000000000002',
-        'BACKEND',
-        'MIDDLE',
+        '12000000-0000-0000-0000-000000000001',
+        '13000000-0000-0000-0000-000000000002',
         'FINISHED',
         3,
         CURRENT_TIMESTAMP - INTERVAL '5 days',
@@ -289,8 +302,8 @@ VALUES
         '40000000-0000-0000-0000-000000000014',
         '10000000-0000-0000-0000-000000000001',
         '20000000-0000-0000-0000-000000000003',
-        'DEVOPS',
-        'MIDDLE',
+        '12000000-0000-0000-0000-000000000003',
+        '13000000-0000-0000-0000-000000000002',
         'FINISHED',
         3,
         CURRENT_TIMESTAMP - INTERVAL '2 days',
@@ -302,8 +315,8 @@ VALUES
         '40000000-0000-0000-0000-000000000015',
         '10000000-0000-0000-0000-000000000001',
         '20000000-0000-0000-0000-000000000002',
-        'BACKEND',
-        'MIDDLE',
+        '12000000-0000-0000-0000-000000000001',
+        '13000000-0000-0000-0000-000000000002',
         'PROCESSING',
         3,
         CURRENT_TIMESTAMP - INTERVAL '4 hours',

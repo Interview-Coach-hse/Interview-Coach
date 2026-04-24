@@ -44,6 +44,7 @@ public class AdminImportService {
     private final ProfileQuestionRepository profileQuestionRepository;
     private final ProfileTagRepository profileTagRepository;
     private final TagRepository tagRepository;
+    private final CatalogReferenceService catalogReferenceService;
 
     public AdminImportService(
             ObjectMapper objectMapper,
@@ -52,7 +53,8 @@ public class AdminImportService {
             InterviewProfileRepository interviewProfileRepository,
             ProfileQuestionRepository profileQuestionRepository,
             ProfileTagRepository profileTagRepository,
-            TagRepository tagRepository
+            TagRepository tagRepository,
+            CatalogReferenceService catalogReferenceService
     ) {
         this.objectMapper = objectMapper;
         this.userService = userService;
@@ -61,6 +63,7 @@ public class AdminImportService {
         this.profileQuestionRepository = profileQuestionRepository;
         this.profileTagRepository = profileTagRepository;
         this.tagRepository = tagRepository;
+        this.catalogReferenceService = catalogReferenceService;
     }
 
     @Transactional
@@ -177,8 +180,8 @@ public class AdminImportService {
         InterviewProfile profile = new InterviewProfile();
         profile.setTitle(payload.title().trim());
         profile.setDescription(payload.description().trim());
-        profile.setDirection(payload.direction());
-        profile.setLevel(payload.level());
+        profile.setDirection(catalogReferenceService.requireDirection(payload.direction()));
+        profile.setLevel(catalogReferenceService.requireLevel(payload.level()));
         profile.setStatus(ProfileStatus.DRAFT);
         profile.setCreatedBy(admin);
         profile.setCreatedAt(now);
@@ -223,8 +226,12 @@ public class AdminImportService {
         Question question = new Question();
         question.setText(normalizedText);
         question.setQuestionType(payload.questionType() == null ? QuestionType.TECHNICAL : payload.questionType());
-        question.setDifficulty(payload.difficulty() != null ? payload.difficulty() : profile == null ? null : profile.getLevel());
-        question.setDirection(payload.direction() != null ? payload.direction() : profile == null ? null : profile.getDirection());
+        question.setDifficulty(payload.difficulty() != null
+                ? catalogReferenceService.requireLevel(payload.difficulty())
+                : profile == null ? null : profile.getLevel());
+        question.setDirection(payload.direction() != null
+                ? catalogReferenceService.requireDirection(payload.direction())
+                : profile == null ? null : profile.getDirection());
         question.setStatus(payload.status() == null ? QuestionStatus.ACTIVE : payload.status());
         question.setCreatedBy(admin);
         question.setCreatedAt(now);

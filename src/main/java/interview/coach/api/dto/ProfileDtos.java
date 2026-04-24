@@ -1,7 +1,5 @@
 package interview.coach.api.dto;
 
-import interview.coach.domain.DomainEnums.InterviewDirection;
-import interview.coach.domain.DomainEnums.InterviewLevel;
 import interview.coach.domain.DomainEnums.ProfileStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -18,8 +16,8 @@ public final class ProfileDtos {
     public record ProfileRequest(
             @NotBlank @Size(max = 255) String title,
             @NotBlank String description,
-            @NotNull InterviewDirection direction,
-            @NotNull InterviewLevel level,
+            @NotBlank String direction,
+            @NotBlank String level,
             List<String> tags
     ) {
     }
@@ -28,8 +26,8 @@ public final class ProfileDtos {
             UUID id,
             String title,
             String description,
-            InterviewDirection direction,
-            InterviewLevel level,
+            String direction,
+            String level,
             ProfileStatus status,
             List<String> tags,
             List<ProfileQuestionResponse> questions,

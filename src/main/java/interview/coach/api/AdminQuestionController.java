@@ -3,8 +3,6 @@ package interview.coach.api;
 import interview.coach.api.dto.QuestionDtos.QuestionRequest;
 import interview.coach.api.dto.QuestionDtos.QuestionPageResponse;
 import interview.coach.api.dto.QuestionDtos.QuestionResponse;
-import interview.coach.domain.DomainEnums.InterviewDirection;
-import interview.coach.domain.DomainEnums.InterviewLevel;
 import interview.coach.domain.DomainEnums.QuestionStatus;
 import interview.coach.domain.DomainEnums.QuestionType;
 import interview.coach.security.AppUserPrincipal;
@@ -39,8 +37,8 @@ public class AdminQuestionController {
     public ResponseEntity<QuestionPageResponse> getAll(
             @RequestParam(required = false) String query,
             @RequestParam(required = false) String search,
-            @RequestParam(required = false) InterviewDirection direction,
-            @RequestParam(required = false) InterviewLevel difficulty,
+            @RequestParam(required = false) String direction,
+            @RequestParam(required = false) String difficulty,
             @RequestParam(required = false) QuestionType questionType,
             @RequestParam(required = false) QuestionStatus status,
             @RequestParam(required = false) UUID excludeProfileId,

@@ -1,7 +1,5 @@
 package interview.coach.api.dto;
 
-import interview.coach.domain.DomainEnums.InterviewDirection;
-import interview.coach.domain.DomainEnums.InterviewLevel;
 import interview.coach.domain.DomainEnums.QuestionStatus;
 import interview.coach.domain.DomainEnums.QuestionType;
 import jakarta.validation.constraints.NotBlank;
@@ -19,8 +17,8 @@ public final class QuestionDtos {
     public record QuestionRequest(
             @NotBlank String text,
             @NotNull QuestionType questionType,
-            InterviewLevel difficulty,
-            InterviewDirection direction,
+            String difficulty,
+            String direction,
             QuestionStatus status
     ) {
     }
@@ -29,8 +27,8 @@ public final class QuestionDtos {
             UUID id,
             String text,
             QuestionType questionType,
-            InterviewLevel difficulty,
-            InterviewDirection direction,
+            String difficulty,
+            String direction,
             QuestionStatus status,
             UUID createdBy,
             LocalDateTime createdAt,

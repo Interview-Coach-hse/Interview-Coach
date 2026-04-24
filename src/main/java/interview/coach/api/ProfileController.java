@@ -2,8 +2,6 @@ package interview.coach.api;
 
 import interview.coach.api.dto.ProfileDtos.ProfileResponse;
 import interview.coach.api.dto.PageDtos.PageResponse;
-import interview.coach.domain.DomainEnums.InterviewDirection;
-import interview.coach.domain.DomainEnums.InterviewLevel;
 import interview.coach.service.InterviewProfileService;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
@@ -25,8 +23,8 @@ public class ProfileController {
 
     @GetMapping
     public ResponseEntity<PageResponse<ProfileResponse>> catalog(
-            @RequestParam(required = false) InterviewDirection direction,
-            @RequestParam(required = false) InterviewLevel level,
+            @RequestParam(required = false) String direction,
+            @RequestParam(required = false) String level,
             @RequestParam(required = false) String query,
             @RequestParam(required = false) String tag,
             @RequestParam(defaultValue = "0") int page,

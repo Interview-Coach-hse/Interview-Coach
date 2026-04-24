@@ -19,17 +19,25 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final UserPreferenceRepository userPreferenceRepository;
+    private final CatalogReferenceService catalogReferenceService;
 
-    public UserService(UserRepository userRepository, UserPreferenceRepository userPreferenceRepository) {
+    public UserService(
+            UserRepository userRepository,
+            UserPreferenceRepository userPreferenceRepository,
+            CatalogReferenceService catalogReferenceService
+    ) {
         this.userRepository = userRepository;
         this.userPreferenceRepository = userPreferenceRepository;
+        this.catalogReferenceService = catalogReferenceService;
     }
 
+    @Transactional(readOnly = true)
     public User getCurrentUser(AppUserPrincipal principal) {
         return userRepository.findById(principal.userId())
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Authenticated user was not found"));
     }
 
+    @Transactional(readOnly = true)
     public UserResponse getCurrentUserProfile(AppUserPrincipal principal) {
         return toResponse(getCurrentUser(principal));
     }
@@ -47,8 +55,8 @@ public class UserService {
                     created.setUser(user);
                     return created;
                 });
-        preference.setPreferredDirection(request.preferredDirection());
-        preference.setPreferredLevel(request.preferredLevel());
+        preference.setPreferredDirection(request.preferredDirection() == null ? null : catalogReferenceService.requireDirection(request.preferredDirection()));
+        preference.setPreferredLevel(request.preferredLevel() == null ? null : catalogReferenceService.requireLevel(request.preferredLevel()));
         preference.setPreferredLanguage(request.preferredLanguage());
         preference.setInterfaceLanguage(request.interfaceLanguage());
         preference.setTheme(request.theme());
@@ -65,8 +73,8 @@ public class UserService {
                 : userPreferenceRepository.findByUserId(user.getId()).orElse(null);
 
         PreferenceResponse preferenceResponse = preference == null ? null : new PreferenceResponse(
-                preference.getPreferredDirection(),
-                preference.getPreferredLevel(),
+                preference.getPreferredDirection() == null ? null : preference.getPreferredDirection().getCode(),
+                preference.getPreferredLevel() == null ? null : preference.getPreferredLevel().getCode(),
                 preference.getPreferredLanguage(),
                 preference.getInterfaceLanguage(),
                 preference.getTheme()

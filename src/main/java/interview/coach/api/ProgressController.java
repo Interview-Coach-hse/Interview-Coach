@@ -1,8 +1,6 @@
 package interview.coach.api;
 
 import interview.coach.api.dto.ProgressDtos.ProgressResponse;
-import interview.coach.domain.DomainEnums.InterviewDirection;
-import interview.coach.domain.DomainEnums.InterviewLevel;
 import interview.coach.security.AppUserPrincipal;
 import interview.coach.service.ProgressService;
 import java.time.LocalDateTime;
@@ -29,8 +27,8 @@ public class ProgressController {
             @AuthenticationPrincipal AppUserPrincipal principal,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime createdFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime createdTo,
-            @RequestParam(required = false) InterviewDirection direction,
-            @RequestParam(required = false) InterviewLevel level
+            @RequestParam(required = false) String direction,
+            @RequestParam(required = false) String level
     ) {
         return ResponseEntity.ok(progressService.getProgress(principal, createdFrom, createdTo, direction, level));
     }

@@ -3,8 +3,6 @@ package interview.coach.api;
 import interview.coach.api.dto.ProfileDtos.ProfileRequest;
 import interview.coach.api.dto.ProfileDtos.ProfileResponse;
 import interview.coach.api.dto.PageDtos.PageResponse;
-import interview.coach.domain.DomainEnums.InterviewDirection;
-import interview.coach.domain.DomainEnums.InterviewLevel;
 import interview.coach.domain.DomainEnums.ProfileStatus;
 import interview.coach.security.AppUserPrincipal;
 import interview.coach.service.InterviewProfileService;
@@ -36,8 +34,8 @@ public class AdminProfileController {
     @GetMapping
     public ResponseEntity<PageResponse<ProfileResponse>> list(
             @RequestParam(required = false) ProfileStatus status,
-            @RequestParam(required = false) InterviewDirection direction,
-            @RequestParam(required = false) InterviewLevel level,
+            @RequestParam(required = false) String direction,
+            @RequestParam(required = false) String level,
             @RequestParam(required = false) String query,
             @RequestParam(required = false) String tag,
             @RequestParam(defaultValue = "0") int page,

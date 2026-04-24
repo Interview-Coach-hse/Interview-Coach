@@ -1,7 +1,5 @@
 package interview.coach.api.dto;
 
-import interview.coach.domain.DomainEnums.InterviewDirection;
-import interview.coach.domain.DomainEnums.InterviewLevel;
 import interview.coach.domain.DomainEnums.MessageType;
 import interview.coach.domain.DomainEnums.ReportItemType;
 import interview.coach.domain.DomainEnums.ReportStatus;
@@ -44,8 +42,8 @@ public final class SessionDtos {
             UUID id,
             UUID profileId,
             String profileTitle,
-            InterviewDirection directionSnapshot,
-            InterviewLevel levelSnapshot,
+            String directionSnapshot,
+            String levelSnapshot,
             SessionState state,
             Integer currentQuestionIndex,
             LocalDateTime startedAt,

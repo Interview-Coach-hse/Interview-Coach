@@ -2,8 +2,6 @@ package interview.coach.service;
 
 import interview.coach.api.dto.ProgressDtos.ProgressPoint;
 import interview.coach.api.dto.ProgressDtos.ProgressResponse;
-import interview.coach.domain.DomainEnums.InterviewDirection;
-import interview.coach.domain.DomainEnums.InterviewLevel;
 import interview.coach.domain.DomainEnums.ReportStatus;
 import interview.coach.domain.DomainEnums.SessionState;
 import interview.coach.domain.entity.InterviewSession;
@@ -17,6 +15,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ProgressService {
@@ -35,12 +34,13 @@ public class ProgressService {
         this.userService = userService;
     }
 
+    @Transactional(readOnly = true)
     public ProgressResponse getProgress(
             AppUserPrincipal principal,
             LocalDateTime createdFrom,
             LocalDateTime createdTo,
-            InterviewDirection direction,
-            InterviewLevel level
+            String direction,
+            String level
     ) {
         var user = userService.getCurrentUser(principal);
         var sessions = interviewSessionRepository.findByUserIdOrderByCreatedAtDesc(user.getId()).stream()
@@ -54,8 +54,8 @@ public class ProgressService {
                                 session.getId(),
                                 session.getCreatedAt(),
                                 report.getOverallScore(),
-                                session.getDirectionSnapshot(),
-                                session.getLevelSnapshot(),
+                                session.getDirectionSnapshot().getCode(),
+                                session.getLevelSnapshot().getCode(),
                                 report.getScoreSource()
                         ))
                         .orElse(null))
@@ -94,8 +94,8 @@ public class ProgressService {
             InterviewSession session,
             LocalDateTime createdFrom,
             LocalDateTime createdTo,
-            InterviewDirection direction,
-            InterviewLevel level
+            String direction,
+            String level
     ) {
         if (createdFrom != null && session.getCreatedAt().isBefore(createdFrom)) {
             return false;
@@ -103,10 +103,10 @@ public class ProgressService {
         if (createdTo != null && session.getCreatedAt().isAfter(createdTo)) {
             return false;
         }
-        if (direction != null && session.getDirectionSnapshot() != direction) {
+        if (direction != null && !session.getDirectionSnapshot().getCode().equalsIgnoreCase(direction.trim())) {
             return false;
         }
-        return level == null || session.getLevelSnapshot() == level;
+        return level == null || session.getLevelSnapshot().getCode().equalsIgnoreCase(level.trim());
     }
 
     private String resolveTrend(BigDecimal scoreDelta, BigDecimal latestScore) {

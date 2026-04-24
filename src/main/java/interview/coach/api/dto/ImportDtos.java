@@ -1,7 +1,5 @@
 package interview.coach.api.dto;
 
-import interview.coach.domain.DomainEnums.InterviewDirection;
-import interview.coach.domain.DomainEnums.InterviewLevel;
 import interview.coach.domain.DomainEnums.QuestionStatus;
 import interview.coach.domain.DomainEnums.QuestionType;
 import java.util.List;
@@ -15,8 +13,8 @@ public final class ImportDtos {
     public record ImportQuestionPayload(
             String text,
             QuestionType questionType,
-            InterviewLevel difficulty,
-            InterviewDirection direction,
+            String difficulty,
+            String direction,
             QuestionStatus status,
             Integer orderIndex,
             Boolean required
@@ -26,8 +24,8 @@ public final class ImportDtos {
     public record ImportProfilePayload(
             String title,
             String description,
-            InterviewDirection direction,
-            InterviewLevel level,
+            String direction,
+            String level,
             List<String> tags
     ) {
     }

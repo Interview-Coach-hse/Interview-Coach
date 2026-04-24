@@ -1,10 +1,10 @@
 package interview.coach.service;
 
 import interview.coach.api.dto.QuestionDtos.QuestionRequest;
-import interview.coach.domain.DomainEnums.InterviewDirection;
-import interview.coach.domain.DomainEnums.InterviewLevel;
 import interview.coach.domain.DomainEnums.QuestionStatus;
 import interview.coach.domain.DomainEnums.QuestionType;
+import interview.coach.domain.entity.InterviewDirectionRef;
+import interview.coach.domain.entity.InterviewLevelRef;
 import interview.coach.domain.entity.Question;
 import interview.coach.domain.entity.Role;
 import interview.coach.domain.entity.User;
@@ -35,6 +35,9 @@ class QuestionServiceTest {
     @Mock
     private UserService userService;
 
+    @Mock
+    private CatalogReferenceService catalogReferenceService;
+
     @InjectMocks
     private QuestionService questionService;
 
@@ -57,21 +60,27 @@ class QuestionServiceTest {
         saved.setId(UUID.randomUUID());
         saved.setText("What is JVM?");
         saved.setQuestionType(QuestionType.TECHNICAL);
-        saved.setDifficulty(InterviewLevel.JUNIOR);
-        saved.setDirection(InterviewDirection.BACKEND);
+        InterviewLevelRef level = new InterviewLevelRef();
+        level.setCode("JUNIOR");
+        InterviewDirectionRef direction = new InterviewDirectionRef();
+        direction.setCode("BACKEND");
+        saved.setDifficulty(level);
+        saved.setDirection(direction);
         saved.setStatus(QuestionStatus.ACTIVE);
         saved.setCreatedBy(creator);
         saved.setCreatedAt(LocalDateTime.now());
         saved.setUpdatedAt(LocalDateTime.now());
 
         when(userService.getCurrentUser(principal)).thenReturn(creator);
+        when(catalogReferenceService.requireLevel("JUNIOR")).thenReturn(level);
+        when(catalogReferenceService.requireDirection("BACKEND")).thenReturn(direction);
         when(questionRepository.save(any(Question.class))).thenReturn(saved);
 
         var response = questionService.create(principal, new QuestionRequest(
                 "What is JVM?",
                 QuestionType.TECHNICAL,
-                InterviewLevel.JUNIOR,
-                InterviewDirection.BACKEND,
+                "JUNIOR",
+                "BACKEND",
                 null
         ));
 

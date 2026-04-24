@@ -24,15 +24,18 @@ public class AdminUserService {
     private final UserRepository userRepository;
     private final UserPreferenceRepository userPreferenceRepository;
     private final RoleRepository roleRepository;
+    private final CatalogReferenceService catalogReferenceService;
 
     public AdminUserService(
             UserRepository userRepository,
             UserPreferenceRepository userPreferenceRepository,
-            RoleRepository roleRepository
+            RoleRepository roleRepository,
+            CatalogReferenceService catalogReferenceService
     ) {
         this.userRepository = userRepository;
         this.userPreferenceRepository = userPreferenceRepository;
         this.roleRepository = roleRepository;
+        this.catalogReferenceService = catalogReferenceService;
     }
 
     public List<AdminUserResponse> getUsers(String email, String roleCode) {
@@ -82,10 +85,10 @@ public class AdminUserService {
                         return created;
                     });
             if (request.preferredDirection() != null) {
-                preference.setPreferredDirection(request.preferredDirection());
+                preference.setPreferredDirection(catalogReferenceService.requireDirection(request.preferredDirection()));
             }
             if (request.preferredLevel() != null) {
-                preference.setPreferredLevel(request.preferredLevel());
+                preference.setPreferredLevel(catalogReferenceService.requireLevel(request.preferredLevel()));
             }
             if (request.preferredLanguage() != null) {
                 preference.setPreferredLanguage(request.preferredLanguage());
@@ -135,8 +138,8 @@ public class AdminUserService {
                 ? user.getPreference()
                 : userPreferenceRepository.findByUserId(user.getId()).orElse(null);
         PreferenceResponse preferenceResponse = preference == null ? null : new PreferenceResponse(
-                preference.getPreferredDirection(),
-                preference.getPreferredLevel(),
+                preference.getPreferredDirection() == null ? null : preference.getPreferredDirection().getCode(),
+                preference.getPreferredLevel() == null ? null : preference.getPreferredLevel().getCode(),
                 preference.getPreferredLanguage(),
                 preference.getInterfaceLanguage(),
                 preference.getTheme()

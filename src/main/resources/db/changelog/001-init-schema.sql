@@ -31,28 +31,46 @@ CREATE TABLE users (
 CREATE INDEX idx_users_role_id ON users(role_id);
 CREATE INDEX idx_users_status ON users(status);
 
+CREATE TABLE interview_directions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code VARCHAR(50) NOT NULL UNIQUE,
+    name VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_interview_directions_code ON interview_directions(code);
+
+CREATE TABLE interview_levels (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code VARCHAR(30) NOT NULL UNIQUE,
+    name VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_interview_levels_code ON interview_levels(code);
+
 CREATE TABLE user_preferences (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL UNIQUE,
-    preferred_direction VARCHAR(50),
-    preferred_level VARCHAR(30),
+    preferred_direction_id UUID,
+    preferred_level_id UUID,
     preferred_language VARCHAR(30),
     interface_language VARCHAR(10),
     theme VARCHAR(20),
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_user_preferences_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT chk_user_preferences_direction CHECK (preferred_direction IS NULL OR preferred_direction IN ('BACKEND', 'FRONTEND', 'DEVOPS')),
-    CONSTRAINT chk_user_preferences_level CHECK (preferred_level IS NULL OR preferred_level IN ('JUNIOR', 'MIDDLE'))
+    CONSTRAINT fk_user_preferences_direction FOREIGN KEY (preferred_direction_id) REFERENCES interview_directions(id),
+    CONSTRAINT fk_user_preferences_level FOREIGN KEY (preferred_level_id) REFERENCES interview_levels(id)
 );
-CREATE INDEX idx_user_preferences_direction ON user_preferences(preferred_direction);
-CREATE INDEX idx_user_preferences_level ON user_preferences(preferred_level);
+CREATE INDEX idx_user_preferences_direction ON user_preferences(preferred_direction_id);
+CREATE INDEX idx_user_preferences_level ON user_preferences(preferred_level_id);
 
 CREATE TABLE interview_profiles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
-    direction VARCHAR(50) NOT NULL,
-    level VARCHAR(30) NOT NULL,
+    direction_id UUID NOT NULL,
+    level_id UUID NOT NULL,
     status VARCHAR(30) NOT NULL DEFAULT 'DRAFT',
     created_by UUID NOT NULL,
     published_at TIMESTAMP,
@@ -60,12 +78,12 @@ CREATE TABLE interview_profiles (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     archived_at TIMESTAMP,
     CONSTRAINT fk_interview_profiles_created_by FOREIGN KEY (created_by) REFERENCES users(id),
-    CONSTRAINT chk_interview_profiles_direction CHECK (direction IN ('BACKEND', 'FRONTEND', 'DEVOPS')),
-    CONSTRAINT chk_interview_profiles_level CHECK (level IN ('JUNIOR', 'MIDDLE')),
+    CONSTRAINT fk_interview_profiles_direction FOREIGN KEY (direction_id) REFERENCES interview_directions(id),
+    CONSTRAINT fk_interview_profiles_level FOREIGN KEY (level_id) REFERENCES interview_levels(id),
     CONSTRAINT chk_interview_profiles_status CHECK (status IN ('DRAFT', 'PUBLISHED', 'ARCHIVED'))
 );
-CREATE INDEX idx_interview_profiles_direction ON interview_profiles(direction);
-CREATE INDEX idx_interview_profiles_level ON interview_profiles(level);
+CREATE INDEX idx_interview_profiles_direction ON interview_profiles(direction_id);
+CREATE INDEX idx_interview_profiles_level ON interview_profiles(level_id);
 CREATE INDEX idx_interview_profiles_status ON interview_profiles(status);
 CREATE INDEX idx_interview_profiles_created_by ON interview_profiles(created_by);
 
@@ -73,21 +91,21 @@ CREATE TABLE questions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     text TEXT NOT NULL,
     question_type VARCHAR(30) NOT NULL,
-    difficulty VARCHAR(30),
-    direction VARCHAR(50),
+    difficulty_id UUID,
+    direction_id UUID,
     status VARCHAR(30) NOT NULL DEFAULT 'ACTIVE',
     created_by UUID NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_questions_created_by FOREIGN KEY (created_by) REFERENCES users(id),
     CONSTRAINT chk_questions_type CHECK (question_type IN ('TECHNICAL', 'BEHAVIORAL', 'GENERAL')),
-    CONSTRAINT chk_questions_difficulty CHECK (difficulty IS NULL OR difficulty IN ('JUNIOR', 'MIDDLE')),
-    CONSTRAINT chk_questions_direction CHECK (direction IS NULL OR direction IN ('BACKEND', 'FRONTEND', 'DEVOPS')),
+    CONSTRAINT fk_questions_difficulty FOREIGN KEY (difficulty_id) REFERENCES interview_levels(id),
+    CONSTRAINT fk_questions_direction FOREIGN KEY (direction_id) REFERENCES interview_directions(id),
     CONSTRAINT chk_questions_status CHECK (status IN ('ACTIVE', 'DISABLED'))
 );
 CREATE INDEX idx_questions_created_by ON questions(created_by);
-CREATE INDEX idx_questions_direction ON questions(direction);
-CREATE INDEX idx_questions_difficulty ON questions(difficulty);
+CREATE INDEX idx_questions_direction ON questions(direction_id);
+CREATE INDEX idx_questions_difficulty ON questions(difficulty_id);
 CREATE INDEX idx_questions_status ON questions(status);
 
 CREATE TABLE profile_questions (
@@ -127,8 +145,8 @@ CREATE TABLE interview_sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL,
     profile_id UUID NOT NULL,
-    direction_snapshot VARCHAR(50) NOT NULL,
-    level_snapshot VARCHAR(30) NOT NULL,
+    direction_snapshot_id UUID NOT NULL,
+    level_snapshot_id UUID NOT NULL,
     state VARCHAR(30) NOT NULL DEFAULT 'CREATED',
     current_question_index INT DEFAULT 0,
     started_at TIMESTAMP,
@@ -139,15 +157,15 @@ CREATE TABLE interview_sessions (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_interview_sessions_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT fk_interview_sessions_profile FOREIGN KEY (profile_id) REFERENCES interview_profiles(id),
-    CONSTRAINT chk_interview_sessions_direction_snapshot CHECK (direction_snapshot IN ('BACKEND', 'FRONTEND', 'DEVOPS')),
-    CONSTRAINT chk_interview_sessions_level_snapshot CHECK (level_snapshot IN ('JUNIOR', 'MIDDLE')),
+    CONSTRAINT fk_interview_sessions_direction_snapshot FOREIGN KEY (direction_snapshot_id) REFERENCES interview_directions(id),
+    CONSTRAINT fk_interview_sessions_level_snapshot FOREIGN KEY (level_snapshot_id) REFERENCES interview_levels(id),
     CONSTRAINT chk_interview_sessions_state CHECK (state IN ('CREATED', 'IN_PROGRESS', 'PAUSED', 'FINISHED', 'PROCESSING', 'FAILED', 'CANCELED')),
     CONSTRAINT chk_interview_sessions_current_question_index CHECK (current_question_index IS NULL OR current_question_index >= 0)
 );
 CREATE INDEX idx_interview_sessions_user_id ON interview_sessions(user_id);
 CREATE INDEX idx_interview_sessions_profile_id ON interview_sessions(profile_id);
-CREATE INDEX idx_interview_sessions_direction_snapshot ON interview_sessions(direction_snapshot);
-CREATE INDEX idx_interview_sessions_level_snapshot ON interview_sessions(level_snapshot);
+CREATE INDEX idx_interview_sessions_direction_snapshot ON interview_sessions(direction_snapshot_id);
+CREATE INDEX idx_interview_sessions_level_snapshot ON interview_sessions(level_snapshot_id);
 CREATE INDEX idx_interview_sessions_state ON interview_sessions(state);
 CREATE INDEX idx_interview_sessions_created_at ON interview_sessions(created_at);
 

@@ -2,11 +2,11 @@ package interview.coach.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import interview.coach.config.AssessmentClientProperties;
-import interview.coach.domain.DomainEnums.InterviewDirection;
-import interview.coach.domain.DomainEnums.InterviewLevel;
 import interview.coach.domain.DomainEnums.QuestionStatus;
 import interview.coach.domain.DomainEnums.QuestionType;
 import interview.coach.domain.DomainEnums.ProfileStatus;
+import interview.coach.domain.entity.InterviewDirectionRef;
+import interview.coach.domain.entity.InterviewLevelRef;
 import interview.coach.domain.entity.InterviewProfile;
 import interview.coach.domain.entity.InterviewSession;
 import interview.coach.domain.entity.ProfileQuestion;
@@ -79,8 +79,12 @@ class AssessmentAiServiceTest {
         question.setId(UUID.randomUUID());
         question.setText("What is Spring Boot?");
         question.setQuestionType(QuestionType.TECHNICAL);
-        question.setDirection(InterviewDirection.BACKEND);
-        question.setDifficulty(InterviewLevel.JUNIOR);
+        InterviewDirectionRef direction = new InterviewDirectionRef();
+        direction.setCode("BACKEND");
+        InterviewLevelRef level = new InterviewLevelRef();
+        level.setCode("JUNIOR");
+        question.setDirection(direction);
+        question.setDifficulty(level);
         question.setStatus(QuestionStatus.ACTIVE);
         question.setCreatedAt(LocalDateTime.now());
         question.setUpdatedAt(LocalDateTime.now());
@@ -102,8 +106,12 @@ class AssessmentAiServiceTest {
         InterviewProfile profile = new InterviewProfile();
         profile.setId(UUID.randomUUID());
         profile.setTitle("Backend");
-        profile.setDirection(InterviewDirection.BACKEND);
-        profile.setLevel(InterviewLevel.JUNIOR);
+        InterviewDirectionRef direction = new InterviewDirectionRef();
+        direction.setCode("BACKEND");
+        InterviewLevelRef level = new InterviewLevelRef();
+        level.setCode("JUNIOR");
+        profile.setDirection(direction);
+        profile.setLevel(level);
         profile.setStatus(ProfileStatus.PUBLISHED);
 
         InterviewSession session = new InterviewSession();

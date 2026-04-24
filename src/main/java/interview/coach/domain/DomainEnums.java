@@ -11,17 +11,6 @@ public final class DomainEnums {
         DELETED
     }
 
-    public enum InterviewDirection {
-        BACKEND,
-        FRONTEND,
-        DEVOPS
-    }
-
-    public enum InterviewLevel {
-        JUNIOR,
-        MIDDLE
-    }
-
     public enum ProfileStatus {
         DRAFT,
         PUBLISHED,

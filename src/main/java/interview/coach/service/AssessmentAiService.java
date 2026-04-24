@@ -3,14 +3,14 @@ package interview.coach.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import interview.coach.config.AssessmentClientProperties;
-import interview.coach.domain.DomainEnums.InterviewDirection;
-import interview.coach.domain.DomainEnums.InterviewLevel;
 import interview.coach.domain.DomainEnums.MessageType;
 import interview.coach.domain.DomainEnums.ReportItemType;
 import interview.coach.domain.DomainEnums.ScoreSource;
 import interview.coach.domain.DomainEnums.SenderType;
 import interview.coach.domain.entity.InterviewProfile;
 import interview.coach.domain.entity.InterviewSession;
+import interview.coach.domain.entity.InterviewDirectionRef;
+import interview.coach.domain.entity.InterviewLevelRef;
 import interview.coach.domain.entity.ProfileQuestion;
 import interview.coach.domain.entity.ProfileTag;
 import interview.coach.domain.entity.SessionMessage;
@@ -412,12 +412,12 @@ public class AssessmentAiService {
                 .toList();
     }
 
-    private String toSpecialization(InterviewDirection direction) {
-        return direction.name().toLowerCase(Locale.ROOT);
+    private String toSpecialization(InterviewDirectionRef direction) {
+        return direction.getCode().toLowerCase(Locale.ROOT);
     }
 
-    private String toGrade(InterviewLevel level) {
-        return level.name().toLowerCase(Locale.ROOT);
+    private String toGrade(InterviewLevelRef level) {
+        return level.getCode().toLowerCase(Locale.ROOT);
     }
 
     private String toScenarioId(InterviewProfile profile) {

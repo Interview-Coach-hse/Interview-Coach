@@ -8,8 +8,6 @@ import interview.coach.api.dto.SessionDtos.SendMessageResponse;
 import interview.coach.api.dto.SessionDtos.SessionMessageResponse;
 import interview.coach.api.dto.SessionDtos.SessionResponse;
 import interview.coach.api.dto.SessionDtos.SessionStateResponse;
-import interview.coach.domain.DomainEnums.InterviewDirection;
-import interview.coach.domain.DomainEnums.InterviewLevel;
 import interview.coach.security.AppUserPrincipal;
 import interview.coach.service.InterviewSessionService;
 import jakarta.validation.Valid;
@@ -122,8 +120,8 @@ public class InterviewSessionController {
             @AuthenticationPrincipal AppUserPrincipal principal,
             @RequestParam(required = false) interview.coach.domain.DomainEnums.SessionState state,
             @RequestParam(required = false) UUID profileId,
-            @RequestParam(required = false) InterviewDirection direction,
-            @RequestParam(required = false) InterviewLevel level,
+            @RequestParam(required = false) String direction,
+            @RequestParam(required = false) String level,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime createdFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime createdTo,
             @RequestParam(defaultValue = "0") int page,
