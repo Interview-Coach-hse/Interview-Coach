@@ -57,6 +57,7 @@ public class InterviewProfileService {
         this.catalogReferenceService = catalogReferenceService;
     }
 
+    @Transactional(readOnly = true)
     public PageResponse<ProfileResponse> getCatalog(
             String direction,
             String level,
@@ -68,6 +69,7 @@ public class InterviewProfileService {
         return getProfilesCatalog(ProfileStatus.PUBLISHED, direction, level, query, tag, page, size);
     }
 
+    @Transactional(readOnly = true)
     public PageResponse<ProfileResponse> getAdminCatalog(
             ProfileStatus status,
             String direction,
@@ -109,6 +111,7 @@ public class InterviewProfileService {
         )));
     }
 
+    @Transactional(readOnly = true)
     public ProfileResponse getPublishedProfile(UUID profileId) {
         InterviewProfile profile = interviewProfileRepository.findById(profileId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Interview profile not found"));
@@ -118,6 +121,7 @@ public class InterviewProfileService {
         return toResponse(profile);
     }
 
+    @Transactional(readOnly = true)
     public ProfileResponse getProfile(UUID profileId) {
         return toResponse(requireProfile(profileId));
     }
@@ -175,6 +179,7 @@ public class InterviewProfileService {
         return toResponse(profile);
     }
 
+    @Transactional(readOnly = true)
     public InterviewProfile requirePublished(UUID profileId) {
         InterviewProfile profile = requireProfile(profileId);
         if (profile.getStatus() != ProfileStatus.PUBLISHED) {
@@ -183,6 +188,7 @@ public class InterviewProfileService {
         return profile;
     }
 
+    @Transactional(readOnly = true)
     public InterviewProfile requireExisting(UUID profileId) {
         return requireProfile(profileId);
     }

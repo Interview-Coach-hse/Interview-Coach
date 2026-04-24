@@ -247,6 +247,7 @@ public class InterviewSessionService {
         }
     }
 
+    @Transactional(readOnly = true)
     public ReportResponse getReport(AppUserPrincipal principal, UUID sessionId) {
         requireOwnedSession(principal, sessionId);
         SessionReport report = sessionReportRepository.findBySessionId(sessionId)
@@ -302,6 +303,7 @@ public class InterviewSessionService {
         return PageResponse.from(interviewSessionRepository.findAll(specification, pageable).map(this::toResponse));
     }
 
+    @Transactional(readOnly = true)
     public PageResponse<SessionMessageResponse> getMessages(AppUserPrincipal principal, UUID sessionId, int page, int size) {
         requireOwnedSession(principal, sessionId);
         Pageable pageable = PageRequest.of(page, size, Sort.by("sequenceNumber").ascending());

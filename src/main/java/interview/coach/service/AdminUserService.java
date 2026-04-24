@@ -38,6 +38,7 @@ public class AdminUserService {
         this.catalogReferenceService = catalogReferenceService;
     }
 
+    @Transactional(readOnly = true)
     public List<AdminUserResponse> getUsers(String email, String roleCode) {
         return userRepository.findAll().stream()
                 .filter(user -> matchesEmail(user, email))
@@ -46,6 +47,7 @@ public class AdminUserService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public AdminUserResponse getUser(UUID userId) {
         return toResponse(requireUser(userId));
     }

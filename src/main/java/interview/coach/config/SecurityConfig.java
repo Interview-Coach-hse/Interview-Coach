@@ -35,6 +35,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/health", "/actuator/health", "/actuator/health/**", "/actuator/prometheus", "/auth/register", "/auth/login", "/auth/refresh", "/auth/verify-email/request", "/auth/verify-email/confirm", "/auth/password/reset", "/auth/password/reset/confirm", "/v3/api-docs/**", "/v3/docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers(HttpMethod.GET, "/profiles", "/profiles/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/admin/directions", "/admin/levels").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(tokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();

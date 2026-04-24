@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/admin")
-@PreAuthorize("hasRole('ADMIN')")
 public class AdminCatalogController {
 
     private final CatalogReferenceService catalogReferenceService;
@@ -34,11 +33,13 @@ public class AdminCatalogController {
     }
 
     @PostMapping("/directions")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CatalogItemResponse> createDirection(@Valid @RequestBody CatalogItemRequest request) {
         return ResponseEntity.ok(catalogReferenceService.createDirection(request));
     }
 
     @PatchMapping("/directions/{directionId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CatalogItemResponse> updateDirection(
             @PathVariable UUID directionId,
             @Valid @RequestBody CatalogItemRequest request
@@ -47,6 +48,7 @@ public class AdminCatalogController {
     }
 
     @DeleteMapping("/directions/{directionId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteDirection(@PathVariable UUID directionId) {
         catalogReferenceService.deleteDirection(directionId);
         return ResponseEntity.noContent().build();
@@ -58,11 +60,13 @@ public class AdminCatalogController {
     }
 
     @PostMapping("/levels")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CatalogItemResponse> createLevel(@Valid @RequestBody CatalogItemRequest request) {
         return ResponseEntity.ok(catalogReferenceService.createLevel(request));
     }
 
     @PatchMapping("/levels/{levelId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CatalogItemResponse> updateLevel(
             @PathVariable UUID levelId,
             @Valid @RequestBody CatalogItemRequest request
@@ -71,6 +75,7 @@ public class AdminCatalogController {
     }
 
     @DeleteMapping("/levels/{levelId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteLevel(@PathVariable UUID levelId) {
         catalogReferenceService.deleteLevel(levelId);
         return ResponseEntity.noContent().build();
