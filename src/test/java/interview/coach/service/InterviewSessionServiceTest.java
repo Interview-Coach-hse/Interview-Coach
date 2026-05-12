@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import interview.coach.api.dto.SessionDtos.CreateSessionRequest;
 import interview.coach.domain.DomainEnums.MessageType;
 import interview.coach.domain.DomainEnums.ProfileStatus;
+import interview.coach.domain.DomainEnums.ReportStatus;
 import interview.coach.domain.DomainEnums.SenderType;
 import interview.coach.domain.DomainEnums.SessionState;
 import interview.coach.domain.entity.ExternalRequest;
@@ -13,6 +14,7 @@ import interview.coach.domain.entity.InterviewProfile;
 import interview.coach.domain.entity.InterviewSession;
 import interview.coach.domain.entity.Role;
 import interview.coach.domain.entity.SessionMessage;
+import interview.coach.domain.entity.SessionReport;
 import interview.coach.domain.entity.User;
 import interview.coach.exception.AssessmentIntegrationException;
 import interview.coach.exception.ApiException;
@@ -117,8 +119,6 @@ class InterviewSessionServiceTest {
         when(interviewSessionRepository.findByIdAndUserId(session.getId(), principal.userId())).thenReturn(Optional.of(session));
         when(interviewSessionRepository.save(any(InterviewSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(sessionMessageRepository.findBySessionIdOrderBySequenceNumberAsc(session.getId())).thenReturn(List.of());
-        when(sessionReportRepository.findBySessionId(session.getId())).thenReturn(Optional.empty());
-        when(sessionReportRepository.save(any(interview.coach.domain.entity.SessionReport.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         var response = interviewSessionService.finishSession(principal, session.getId());
 
@@ -142,8 +142,6 @@ class InterviewSessionServiceTest {
         when(interviewSessionRepository.findByIdAndUserId(session.getId(), principal.userId())).thenReturn(Optional.of(session));
         when(interviewSessionRepository.save(any(InterviewSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(sessionMessageRepository.findBySessionIdOrderBySequenceNumberAsc(session.getId())).thenReturn(new ArrayList<>(List.of(unansweredQuestion)));
-        when(sessionReportRepository.findBySessionId(session.getId())).thenReturn(Optional.empty());
-        when(sessionReportRepository.save(any(interview.coach.domain.entity.SessionReport.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         interviewSessionService.finishSession(principal, session.getId());
 
@@ -188,6 +186,32 @@ class InterviewSessionServiceTest {
         assertThat(session.getCurrentQuestionIndex()).isEqualTo(1);
         verify(assessmentAiService).getLocalFallbackPrompt(session, 0, unavailable.getMessage());
         verify(sessionMessageRepository, times(2)).save(any(SessionMessage.class));
+    }
+
+    @Test
+    void retryReportShouldResetFailedReportAndTriggerBackgroundGeneration() {
+        AppUserPrincipal principal = principal("user@example.com", "USER");
+        InterviewSession session = session(principal.userId(), SessionState.FAILED);
+        SessionReport report = new SessionReport();
+        report.setId(UUID.randomUUID());
+        report.setSession(session);
+        report.setStatus(ReportStatus.FAILED);
+        report.setSummaryText("old");
+        report.setErrorMessage("boom");
+
+        when(interviewSessionRepository.findByIdAndUserId(session.getId(), principal.userId())).thenReturn(Optional.of(session));
+        when(interviewSessionRepository.save(any(InterviewSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(sessionReportRepository.findBySessionId(session.getId())).thenReturn(Optional.of(report));
+        when(sessionReportRepository.save(any(SessionReport.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var response = interviewSessionService.retryReport(principal, session.getId());
+
+        assertThat(response.state()).isEqualTo(SessionState.PROCESSING);
+        assertThat(report.getStatus()).isEqualTo(ReportStatus.PENDING);
+        assertThat(report.getSummaryText()).isNull();
+        assertThat(report.getErrorMessage()).isNull();
+        verify(reportItemRepository).deleteByReport_Id(report.getId());
+        verify(reportGenerationService).generateForAsync(eq(session.getId()));
     }
 
     private static AppUserPrincipal principal(String email, String roleCode) {

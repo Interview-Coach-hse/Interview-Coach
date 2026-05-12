@@ -107,6 +107,14 @@ public class InterviewSessionController {
         return ResponseEntity.ok(interviewSessionService.finishSession(principal, sessionId));
     }
 
+    @PostMapping("/sessions/{sessionId}/report/retry")
+    public ResponseEntity<SessionResponse> retryReport(
+            @AuthenticationPrincipal AppUserPrincipal principal,
+            @PathVariable UUID sessionId
+    ) {
+        return ResponseEntity.ok(interviewSessionService.retryReport(principal, sessionId));
+    }
+
     @GetMapping("/sessions/{sessionId}/report")
     public ResponseEntity<ReportResponse> report(
             @AuthenticationPrincipal AppUserPrincipal principal,

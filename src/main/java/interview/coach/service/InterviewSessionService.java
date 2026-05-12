@@ -219,6 +219,43 @@ public class InterviewSessionService {
         return toResponse(session);
     }
 
+    @Transactional
+    public SessionResponse retryReport(AppUserPrincipal principal, UUID sessionId) {
+        InterviewSession session = requireOwnedSession(principal, sessionId);
+        SessionReport report = sessionReportRepository.findBySessionId(sessionId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Session report not found"));
+
+        if (report.getStatus() != ReportStatus.FAILED) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Report can be retried only from FAILED status");
+        }
+        if (session.getState() != SessionState.FAILED && session.getState() != SessionState.FINISHED && session.getState() != SessionState.PROCESSING) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Report cannot be retried from current session state");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        session.setState(SessionState.PROCESSING);
+        session.setLastErrorCode(null);
+        session.setLastErrorMessage(null);
+        session.setUpdatedAt(now);
+        interviewSessionRepository.save(session);
+
+        report.setStatus(ReportStatus.PENDING);
+        report.setSummaryText(null);
+        report.setOverallScore(null);
+        report.setScoreSource(null);
+        report.setRawPayload(null);
+        report.setGeneratedAt(null);
+        report.setErrorMessage(null);
+        report.setExternalRequest(null);
+        report.setRequestedAt(now);
+        report.setUpdatedAt(now);
+        sessionReportRepository.save(report);
+        reportItemRepository.deleteByReport_Id(report.getId());
+
+        triggerReportGenerationAfterCommit(sessionId);
+        return toResponse(session);
+    }
+
     private void triggerReportGenerationAfterCommit(UUID sessionId) {
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
